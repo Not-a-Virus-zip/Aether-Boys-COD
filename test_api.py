@@ -33,6 +33,11 @@ with open("ingredients_list.txt", "w") as file:
     # file.write("\n".join(f"{a}{" "*(100-len(a))}(Generated from {b!r})"for a, b in zip(formatted_stuff, stuff)))
     file.write("\n".join(formatted_stuff))
 
+with open("edited_ingredients_list.txt", "r") as file:
+    edited_ingredients = file.read().splitlines()
+edited_ingredients = [line[:100].strip() for line in edited_ingredients]
+with open("candidate_ingredients_list.txt", "w") as file:
+    file.write("\n".join(edited_ingredients))
 # print([thing for thing in stuff if thing.find("  ")!= -1])
 # print(sum(1 for thing in stuff if thing.startswith("Cheese")))
 # print(things_that_arent_dicts)
