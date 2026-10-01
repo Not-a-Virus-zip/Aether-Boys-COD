@@ -23,13 +23,14 @@ for thing in foundation_foods:
         stuff.append(thing["description"].strip())
 
 stuff.sort()
-stuff = list(map(lambda f: (process(f), f), stuff))
+processed_stuff = list(map(lambda f: (process(f), f), stuff))
 
-formatted_stuff = [thing.lower() for thing, _ in stuff]
+formatted_stuff = [thing.lower() for thing, _ in processed_stuff]
 # print("\n".join(f"{processed} <- {raw}" for (processed, raw) in stuff))
 print("\n".join(formatted_stuff))
 
 with open("ingredients_list.txt", "w") as file:
+    # file.write("\n".join(f"{a}{" "*(100-len(a))}(Generated from {b!r})"for a, b in zip(formatted_stuff, stuff)))
     file.write("\n".join(formatted_stuff))
 
 # print([thing for thing in stuff if thing.find("  ")!= -1])

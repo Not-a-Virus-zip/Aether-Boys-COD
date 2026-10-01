@@ -56,7 +56,7 @@ raw short loin (ny strip steak) beef
 raw select trimmed to 1/8" fat separable lean only porterhouse steak short loin beef
 grilled cooked choice trimmed to 1/8" fat separable lean only bone-in t-bone steak short loin beef
 raw top sirloin steak beef
-raw beef,ï¿½tenderloin steak
+raw beef, tenderloin steak
 raw beet greens
 raw beets
 raw ground bison
@@ -114,7 +114,7 @@ wild caught frozen pacific or alaskan cod
 raw collards
 with raisins soft oatmeal cookies
 raw dry white or yellow masa harina corn flour
-raw ï¿½fresh yellow and white kernels sweet corn
+raw  fresh yellow and white kernels sweet corn
 large or small curd full fat cottage cheese
 shelf stable from concentrate not fortified cranberry juice
 block full fat cream cheese
@@ -185,7 +185,7 @@ raw seedless green grapes
 raw seedless red grapes
 raw root removed bulb and greens (scallion) green onion
 wild caught frozen halibut
-deli meat (96%, water added) fat free pre-packaged sliced ham
+water added) deli meat (96%fat free pre-packaged sliced ham
 restaurant sliced ham
 commercial hummus
 shelf-stable from concentrate pomegranate juice
@@ -296,7 +296,7 @@ raw red radishes
 raw raspberries
 without meat fried rice chinese restaurant
 sweet and sour pork chinese restaurant
-pupusas con frijoles latino restaurant
+bean) pupusas con frijoles (pupusas latino restaurant
 pork tamale latino restaurant
 raw unenriched black rice
 raw unenriched long grain brown rice
