@@ -7,21 +7,15 @@ import tkinter as tk
 import enum
 
 def main():
-    root = tk.Tk()
-    root.wm_title("Meal Planner")
+    app = Application()
+
     global placeholder_image
     placeholder_image = tk.PhotoImage(file="placeholder.png")
-
-    root.geometry("550x400")
-    root.columnconfigure(0, weight=1)
-    root.rowconfigure(0, weight=1)
-    top_bar(root)
-    root.mainloop()
-
+    app.run()
 
 class Application:
     root: tk.Tk
-    interface: Interface
+    interface: "Interface"
 
     def __init__(self):
         self.root = tk.Tk()
@@ -37,9 +31,12 @@ class Interface:
     
     def __init__(self, root: tk.Tk):
         root.columnconfigure(0, weight=1)
-        root.rowconfigure(1, weight=1)
-        header_frame = ttk.Frame(root, relief=tk.RIDGE, padding=2)
-        header_frame.grid(row=0, column=0, sticky=tk.EW)
+        root.rowconfigure(0, weight=1)
+
+        alternate_header = ttk.Notebook(root)
+
+        # header_frame = ttk.Frame(root, relief=tk.RIDGE, padding=2)
+        # header_frame.grid(row=0, column=0, sticky=tk.EW)
         self.frames = {
             "Virtual Pantry": make_virtual_pantry(root),
             "Meal Catalogue": make_meal_catalogue(root),
@@ -48,91 +45,15 @@ class Interface:
             "Ingredients": make_ingredients(root),
             "Settings": make_settings(root),
         }
-        active_frame: ttk.Widget | None = None
-        active_button: ttk.Button | None = None
-        def make_command(widget, button):
-            def command():
-                nonlocal active_frame
-                nonlocal active_button
-                if active_frame is not None:
-                    active_frame.grid_forget()
-                    active_frame = None
-                if active_button is not None:
-                    active_button.config(state=tk.NORMAL)
-                    active_button = None
-                widget.grid(row=1, column=0, sticky="nsew")
-                button.config(state=tk.DISABLED)
-                active_frame = widget
-                active_button = button
-            return command
-        
-        for i, (option, widget) in enumerate(options.items()):
-            button = ttk.Button(header_frame, text=option)
-            button.config(command=make_command(widget, button))
-            button.grid(row=0, column=i)
-        dummy_label = ttk.Label(root, text="Content goes here")
-        dummy_label.grid(row=1, column=0)
-        active_frame = dummy_label
-
-menu_options = [
-    "Virtual Pantry",
-    "Meal Catalogue",
-    "Calendar",
-    "Your Shopping List",
-    "Ingredients",
-    "Settings",
-]
-
-def clear(root: tk.Tk):
-    for thing in list(root.children.values()):
-        thing.destroy()
+        for name, frame in self.frames.items():
+            alternate_header.add(frame, text=name, state=tk.DISABLED)
+        for pane in [".ingredients", ".virtual pantry"]:
+            alternate_header.tab(pane, state=tk.NORMAL)
+        alternate_header.select(".ingredients")
+        alternate_header.grid(row=0, column=0, sticky="nsew")
 
 def show_click(info):
     return lambda: messagebox.showinfo("This is a Button", f"You have clicked '{info}'.")
-
-
-def top_bar(root: tk.Tk):
-    clear(root)
-    frame = ttk.Frame(root)
-    frame.grid(row=0, column=0, sticky=tk.NSEW)
-    frame.columnconfigure(0, weight=1)
-    frame.rowconfigure(1, weight=1)
-    # ttk.Frame(frame).grid(row=1, column=0)
-    header_frame = ttk.Frame(frame, relief=tk.RIDGE, padding=2)
-    header_frame.grid(row=0, column=0, sticky=tk.EW)
-    options = {
-        "Virtual Pantry": make_virtual_pantry(frame),
-        "Meal Catalogue": make_meal_catalogue(frame),
-        "Calendar": make_calendar(frame, DayOfTheWeek.Saturday, 30),
-        "Your Shopping List": make_shopping_list(frame),
-        "Ingredients": make_ingredients(frame),
-        "Settings": make_settings(frame),
-    }
-    active_frame: ttk.Widget | None = None
-    active_button: ttk.Button | None = None
-    def make_command(widget, button):
-        def command():
-            nonlocal active_frame
-            nonlocal active_button
-            if active_frame is not None:
-                active_frame.grid_forget()
-                active_frame = None
-            if active_button is not None:
-                active_button.config(state=tk.NORMAL)
-                active_button = None
-            widget.grid(row=1, column=0, sticky="nsew")
-            button.config(state=tk.DISABLED)
-            active_frame = widget
-            active_button = button
-        return command
-    
-    for i, (option, widget) in enumerate(options.items()):
-        button = ttk.Button(header_frame, text=option)
-        button.config(command=make_command(widget, button))
-        button.grid(row=0, column=i)
-    dummy_label = ttk.Label(frame, text="Content goes here")
-    dummy_label.grid(row=1, column=0)
-    active_frame = dummy_label
 
 class DayOfTheWeek(enum.Enum):
     Sunday = 0
