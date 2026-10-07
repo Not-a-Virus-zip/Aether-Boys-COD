@@ -4,6 +4,7 @@ from tkinter import ttk
 from tkinter import messagebox
 import tkinter as tk
 
+from . import dummy_business_logic_api as b_logic
 import enum
 
 def main():
@@ -22,6 +23,7 @@ class Application:
         self.root.wm_title("Meal Planner")
         self.root.geometry("550x400")
         self.interface = Interface(self.root)
+        self.logic = b_logic.BusinessLogic()
 
     def run(self):
         self.root.mainloop()
@@ -35,8 +37,6 @@ class Interface:
 
         alternate_header = ttk.Notebook(root)
 
-        # header_frame = ttk.Frame(root, relief=tk.RIDGE, padding=2)
-        # header_frame.grid(row=0, column=0, sticky=tk.EW)
         self.frames = {
             "Virtual Pantry": make_virtual_pantry(root),
             "Meal Catalogue": make_meal_catalogue(root),
