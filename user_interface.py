@@ -3,10 +3,11 @@ from typing import Literal, Callable, Iterable
 from tkinter import ttk
 from tkinter import messagebox
 import tkinter as tk
-
+from dataclasses import dataclass
 import enum
 
-import dummy_business_logic_api as b_logic
+# import dummy_business_logic_api as b_logic
+from dummy_business_logic_api import BusinessLogic
 
 def main():
     app = Application()
@@ -23,21 +24,19 @@ class Application:
         self.root = tk.Tk()
         self.root.wm_title("Meal Planner")
         self.root.geometry("550x400")
-        self.interface = Interface(self.root)
-        self.logic = b_logic.BusinessLogic()
+        self.logic = BusinessLogic()
+        self.interface = Interface(self.root, self.logic)
 
     def run(self):
         self.root.mainloop()
 
 class Interface:
-    frames: dict[str, ttk.Frame]
-    
-    def __init__(self, root: tk.Tk):
+    def __init__(self, root: tk.Tk, logic: BusinessLogic):
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
 
         alternate_header = ttk.Notebook(root)
-        contents = (
+        self.contents = (
             self.pantry,
             self.meals,
             self.calendar,
@@ -45,23 +44,16 @@ class Interface:
             self.ingredients,
             self.settings,
         ) = (
-            VirtualPantry(root),
+            VirtualPantry(root, logic),
             make_meal_catalogue(root),
             make_calendar(root, DayOfTheWeek.Saturday, 30),
             make_shopping_list(root),
-            IngredientsList(root),
+            IngredientsList(root, logic),
             make_settings(root),
         )
-        self.frames = {
-            "Virtual Pantry": VirtualPantry(root),
-            "Meal Catalogue": make_meal_catalogue(root),
-            "Calendar": make_calendar(root, DayOfTheWeek.Saturday, 30),
-            "Your Shopping List": make_shopping_list(root),
-            "Ingredients": IngredientsList(root),
-            "Settings": make_settings(root),
-        }
-        for name, frame in self.frames.items():
-            alternate_header.add(frame, text=name, state=tk.DISABLED)
+
+        for thing in self.contents:
+            alternate_header.add(thing.frame, text=thing.name, state=tk.DISABLED)
         for pane in [".ingredients", ".virtual pantry"]:
             alternate_header.tab(pane, state=tk.NORMAL)
         alternate_header.select(".ingredients")
@@ -78,6 +70,11 @@ class DayOfTheWeek(enum.Enum):
     Thursday = 4
     Friday = 5
     Saturday = 6
+
+@dataclass
+class DummyInterface:
+    name: str
+    frame: ttk.Frame
 
 def make_buttons_frame(put_in: tk.Misc, button_instructions: Iterable[str | int], button_weight: int | None = None) -> tuple[ttk.Frame, list[ttk.Button]]:
     bottom_buttons_frame = ttk.Frame(put_in)
@@ -96,7 +93,7 @@ def make_buttons_frame(put_in: tk.Misc, button_instructions: Iterable[str | int]
                 bottom_buttons_frame.columnconfigure(i, weight=weight)
     return bottom_buttons_frame, buttons
 
-def make_calendar(parent: tk.Tk | ttk.Frame, starting_day: DayOfTheWeek, days_in_month: int) -> ttk.Frame:
+def make_calendar(parent: tk.Tk | ttk.Frame, starting_day: DayOfTheWeek, days_in_month: int):
     holder_frame = ttk.Frame(parent, name="calendar", padding=20)
     cal_frame = ttk.Frame(holder_frame, relief=tk.RIDGE, padding=2)
     holder_frame.rowconfigure(1, weight=1)
@@ -166,7 +163,7 @@ def make_calendar(parent: tk.Tk | ttk.Frame, starting_day: DayOfTheWeek, days_in
     add.config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Add Event", add_event_menu))
     edit.config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Event", edit_event_menu))
     # TODO: Edit Menu
-    return holder_frame
+    return DummyInterface("Calendar", holder_frame)
 
 type EditMenuElem = Literal["entry", "text", "fixed options", "db search options", "list display", "display", "image", "separating bar", "checkbox", "button", "add ingredient"]
 
@@ -299,8 +296,8 @@ def generate_edit_menu(options: list[tuple[str, str, EditMenuElem]], bottom_butt
 class VirtualPantry:
     name: str = "Virtual Pantry"
 
-    def __init__(self, parent: tk.Tk | ttk.Frame):
-        vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
+    def __init__(self, parent: tk.Tk | ttk.Frame, logic: BusinessLogic):
+        self.frame = vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
         list_frame = ttk.Frame(vp_frame)
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
@@ -311,12 +308,9 @@ class VirtualPantry:
         ingr_list.heading("qty", text="Quantity")
         ingr_list.column("ingr", anchor="w")
         ingr_list.column("qty", anchor="e")
-        example_ingredients = [f"Test Ingredient {i}" for i in range(20)]
-        test_units = ["lbs", "gal", "oz", "pkgs"]
-        for i, ingr in enumerate(example_ingredients, start=1):
-            amnt = random.randint(2, 60)
-            unit = random.choice(test_units)
-            ingr_list.insert("", "end", text="", values=[ingr, f"{amnt} {unit}"])
+        for ingr, quant in logic.load_virtual_pantry_contents():
+            ingr_list.insert("", "end", text="", values=[ingr, quant])
+        
         scrollbar.grid(row=0, column=1, sticky="ns")
         ingr_list.grid(row=0, column=0, sticky="news")
         list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
@@ -345,9 +339,42 @@ class VirtualPantry:
         bottom_buttons[0].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Add Ingredient", add_ingr_menu))
         bottom_buttons[1].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Ingredient", edit_ingr_menu))
 
+class IngredientsList:
+    name: str = "Ingredients"
+    def __init__(self, parent: tk.Tk | ttk.Frame, blogic: BusinessLogic):
+        self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
+        list_frame = ttk.Frame(ingredients_frame)
+        list_frame.columnconfigure(0, weight=1)
+        list_frame.rowconfigure(0, weight=1)
+        ingredients_list = ttk.Treeview(list_frame, columns=["name"], show="headings")
+        scrollbar = ttk.Scrollbar(list_frame, command=ingredients_list.yview)
+        ingredients_list.config(yscrollcommand=scrollbar.set)
+        ingredients_list.heading("name", text="Name")
+        ingredients_list.column("name", anchor="w")
+        for ingr in blogic.load_ingredient_list():
+            ingredients_list.insert("", "end", text="", values=[ingr])
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        ingredients_list.grid(row=0, column=0, sticky="news")
+        list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
+        ingredients_frame.rowconfigure(0, weight=1)
+        ingredients_frame.columnconfigure(0, weight=1)
+        ingredients_frame.columnconfigure(1, weight=1)
 
-        return vp_frame
-        
+        edit_create_menus = [generate_edit_menu(
+            [
+                ("Image", "placeholder_img", "image"),
+                ("Name", "Foobar Salad", "entry"),
+                ("Description", "Insert Description Here", "text"),
+                ("", "", "separating bar"),
+                ("Recipe (Optional)", "Insert Recipe Here", "text"),
+            ],
+            ["Cancel", 1, save_name],
+        ) for save_name in ("Save Changes", "Create Meal")]
+        bottom_b_frame, buttons = make_buttons_frame(ingredients_frame, ("Add New", "Edit Selected"), button_weight=1)
+        for button, menu in zip(buttons, edit_create_menus):
+            button.config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Meal", menu))
+        bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+
 def make_meal_catalogue(parent: tk.Tk | ttk.Frame):
     meal_frame = ttk.Frame(parent, name="meal_catalogue", padding=20)
     list_frame = ttk.Frame(meal_frame)
@@ -386,50 +413,9 @@ def make_meal_catalogue(parent: tk.Tk | ttk.Frame):
         button = ttk.Button(meal_frame, text=name)
         button.grid(row=1, column=col, sticky="ew")
         button.config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Meal", edit_meal_menu))
-    return meal_frame
+    return DummyInterface("Meal Catalog", meal_frame)
 
-def make_ingredients(parent: tk.Tk | ttk.Frame):
-    ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
-    list_frame = ttk.Frame(ingredients_frame)
-    list_frame.columnconfigure(0, weight=1)
-    list_frame.rowconfigure(0, weight=1)
-    ingredients_list = ttk.Treeview(list_frame, columns=["name", "desc"], show="headings")
-    scrollbar = ttk.Scrollbar(list_frame, command=ingredients_list.yview)
-    ingredients_list.config(yscrollcommand=scrollbar.set)
-    ingredients_list.heading("name", text="Name")
-    ingredients_list.heading("desc", text="Description")
-    ingredients_list.column("name", anchor="w")
-    ingredients_list.column("desc", anchor="w")
-    example_ingredients = [(f"Test Ingredient {i}", f"Lorem Ipsum Test Description {i}") for i in range(20)]
-    for name, desc in example_ingredients:
-        ingredients_list.insert("", "end", text="", values=[name, desc])
-    scrollbar.grid(row=0, column=1, sticky="ns")
-    ingredients_list.grid(row=0, column=0, sticky="news")
-    list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
-    ingredients_frame.rowconfigure(0, weight=1)
-    ingredients_frame.columnconfigure(0, weight=1)
-    ingredients_frame.columnconfigure(1, weight=1)
 
-    edit_create_menus = [generate_edit_menu(
-        [
-            ("Image", "placeholder_img", "image"),
-            ("Name", "Foobar Salad", "entry"),
-            ("Description", "Insert Description Here", "text"),
-            ("", "", "separating bar"),
-            ("Recipe (Optional)", "Insert Recipe Here", "text"),
-        ],
-        ["Cancel", 1, save_name],
-    ) for save_name in ("Save Changes", "Create Meal")]
-    bottom_b_frame, buttons = make_buttons_frame(ingredients_frame, ("Add New", "Edit Selected"), button_weight=1)
-    for button, menu in zip(buttons, edit_create_menus):
-        button.config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Meal", menu))
-    bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
-    # for col, name in enumerate():
-    #     button = ttk.Button(ingredients_frame, text=name)
-    #     button.grid(row=1, column=col, sticky="ew")
-        
-    
-    return ingredients_frame
 
 def make_shopping_list(parent: tk.Tk | ttk.Frame):
     shopping_frame = ttk.Frame(parent, name="shopping", padding=20)
@@ -469,7 +455,7 @@ def make_shopping_list(parent: tk.Tk | ttk.Frame):
         button = ttk.Button(shopping_frame, text=name)
         button.grid(row=2, column=col, sticky="ew")
         bottom_buttons.append(button)
-    return shopping_frame
+    return DummyInterface("Your Shopping List", shopping_frame)
 
 def make_settings(parent: tk.Tk | ttk.Frame):
     
@@ -507,7 +493,7 @@ def make_settings(parent: tk.Tk | ttk.Frame):
         label.grid(row=i, column=1, sticky="e")
         button.grid(row=i, column=3, sticky="w")
 
-    return options_frame
+    return DummyInterface("Settings", options_frame)
 
 
 if __name__ == '__main__':
