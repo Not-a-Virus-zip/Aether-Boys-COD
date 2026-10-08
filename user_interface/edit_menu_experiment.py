@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field, InitVar
-import typing
 from tkinter import ttk
+from tkinter import scrolledtext as scrtxt
 import tkinter as tk
-
 
 # add_event_menu, edit_event_menu = (generate_edit_menu(
 #     [
@@ -27,12 +26,14 @@ class EventEditor:
     repeat: MenuField[FixedOptions]
     interval: MenuField[FixedOptions]
     stop_on: MenuField[Entry]
-    
 
 @dataclass
 class SharedData:
-    option_display_name: str
     container: InitVar[ttk.Frame]
+
+    option_display_name: str
+
+    def insert(self, row: int): pass
 
 @dataclass(match_args=True, slots=True)
 class Display(SharedData):
@@ -66,15 +67,38 @@ class Entry(SharedData):
 
 @dataclass(match_args=True, slots=True)
 class Button(SharedData):
-    pass
+    button_text: InitVar[str]
 
-@dataclass(match_args=True, slots=True)
-class RawFrame(SharedData):
-    pass
+    button: ttk.Button = field(init=False)
+
+    def __post_init__(self, container: ttk.Frame, button_text: str):
+        self.button = ttk.Button(container, text=button_text)
+    
+    def insert(self, row: int):
+        self.button.grid(row=row, column=1, sticky="nw")
+    
+    def set_text(self, text: str):
+        self.button.config(text=text)
 
 @dataclass(match_args=True, slots=True)
 class Text(SharedData):
-    pass
+    input_field: scrtxt.ScrolledText = field(init=False)
+    
+    def __post_init__(self, container: ttk.Frame):
+        self.input_field = scrtxt.ScrolledText(container, height=3)
+
+    def insert(self, row: int):
+        self.input_field.grid(row=row, column=1, sticky="nw")
+
+    def clear_text(self):
+        self.input_field.delete("0.0", tk.END)
+    
+    def set_text(self, text: str):
+        self.clear_text()
+        self.input_field.insert(tk.END, text)
+    
+    def get_text(self):
+        return self.input_field.get("0.0", tk.END)
 
 @dataclass(match_args=True, slots=True)
 class FixedOptions(SharedData):
