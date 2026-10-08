@@ -2,6 +2,7 @@ import random
 from typing import Literal, Callable, Iterable
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter.scrolledtext import ScrolledText
 import tkinter as tk
 from dataclasses import dataclass
 import enum
@@ -179,7 +180,7 @@ type EditMenuElem = Literal["entry", "text", "fixed options", "db search options
 def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
     edit_menu = tk.Toplevel(root)
     edit_menu.wm_title(name)
-    edit_menu.geometry("600x600")
+    edit_menu.grid_propagate(True)
     edit_frame = edit_frame_maker(edit_menu)
     edit_menu.columnconfigure(0, weight=1)
     edit_menu.rowconfigure(0, weight=1)
@@ -188,27 +189,19 @@ def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Calla
 
 placeholder_image: tk.PhotoImage
 
+class AutoGenerateEditMenu:
+    def __init__(self) -> None:
+        pass
+
+
 def generate_edit_menu(options: list[tuple[str, str, EditMenuElem]], bottom_buttons: list[str | int]) -> Callable[[tk.Toplevel], ttk.Frame]:
     def inner(parent: tk.Toplevel) -> ttk.Frame:
         holder = ttk.Frame(parent, padding=10)
-        # holder.columnconfigure(0, weight=1)
         holder.columnconfigure(1, weight=1)
         done_button_row = len(options)+1
         holder.rowconfigure(done_button_row-1, weight=1)
 
         bottom_buttons_frame, _ = make_buttons_frame(holder, bottom_buttons)
-
-        # bottom_buttons_frame = ttk.Frame(holder)
-        # # bottom_buttons_frame.columnconfigure(0, weight=1)
-        # # i = 1
-        # for i, slot in enumerate(bottom_buttons):
-        #     match slot:
-        #         case str(name):
-        #             button = ttk.Button(bottom_buttons_frame, text=name)
-        #             button.grid(row=0, column=i) # , padx=4)
-        #         case int(weight):
-        #             bottom_buttons_frame.columnconfigure(i, weight=weight)
-        # # bottom_buttons_frame.columnconfigure(i, weight=1)
         bottom_buttons_frame.grid(column=0, row=done_button_row, columnspan=2, sticky="ew")
 
         for i, (name, sample_input, option_type) in enumerate(options):
@@ -246,7 +239,7 @@ def generate_edit_menu(options: list[tuple[str, str, EditMenuElem]], bottom_butt
 
                     add_frame.grid(row=i, column=1, sticky="nw")
                 case "text":
-                    text = tk.Text(holder, height=3)
+                    text = ScrolledText(holder, height=3)
                     text.insert(tk.END, sample_input)
                     text.grid(row=i, column=1, sticky="new")
                 case "fixed options":
@@ -279,13 +272,6 @@ def generate_edit_menu(options: list[tuple[str, str, EditMenuElem]], bottom_butt
                 case "image":
                     image = ttk.Label(holder, image=placeholder_image, padding=2, relief=tk.RIDGE)
                     image.grid(row=i, column=1, sticky="nw")
-                    # image_frame = ttk.Frame(holder, width=100, height=100)
-                    # image_frame.columnconfigure(0, weight=1)
-                    # image_frame.rowconfigure(0, weight=1)
-                    # image = ttk.Label(image_frame, image=placeholder_image, padding=2, relief=tk.RIDGE)
-                    # image.grid(row=0, column=0, sticky="nsew")
-                    # image_frame.grid_propagate(False)
-                    # image_frame.grid(row=i, column=1, sticky="w")
                 case "checkbox":
                     checkbox = ttk.Checkbutton(holder)
                     checkbox.invoke()
@@ -334,7 +320,7 @@ class VirtualPantry:
             button.grid(row=1, column=col, sticky="ew")
             bottom_buttons.append(button)
 
-        self.add_button, self.edit_button = bottom_buttons;
+        self.add_button, self.edit_button = bottom_buttons
         edit_ingr_menu = generate_edit_menu(
             [
                 ("Ingredient", "Milk", "display"),
@@ -349,8 +335,6 @@ class VirtualPantry:
             ],
             ["Cancel", 1, "Add Ingredient to Pantry"],
         )
-        # bottom_buttons[0].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Add Ingredient", add_ingr_menu))
-        # bottom_buttons[1].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Ingredient", edit_ingr_menu))
         self.add_button.config(command=self.add_button_command)
         self.edit_button.config(command=self.edit_button_command, state=tk.DISABLED)
         self.selection_update_binding = ingr_list.bind("<<TreeviewSelect>>", self.on_selection_change)
