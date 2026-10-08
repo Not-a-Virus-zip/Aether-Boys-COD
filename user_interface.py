@@ -4,8 +4,9 @@ from tkinter import ttk
 from tkinter import messagebox
 import tkinter as tk
 
-from . import dummy_business_logic_api as b_logic
 import enum
+
+import dummy_business_logic_api as b_logic
 
 def main():
     app = Application()
@@ -36,13 +37,27 @@ class Interface:
         root.rowconfigure(0, weight=1)
 
         alternate_header = ttk.Notebook(root)
-
+        contents = (
+            self.pantry,
+            self.meals,
+            self.calendar,
+            self.shopping_list,
+            self.ingredients,
+            self.settings,
+        ) = (
+            VirtualPantry(root),
+            make_meal_catalogue(root),
+            make_calendar(root, DayOfTheWeek.Saturday, 30),
+            make_shopping_list(root),
+            IngredientsList(root),
+            make_settings(root),
+        )
         self.frames = {
-            "Virtual Pantry": make_virtual_pantry(root),
+            "Virtual Pantry": VirtualPantry(root),
             "Meal Catalogue": make_meal_catalogue(root),
             "Calendar": make_calendar(root, DayOfTheWeek.Saturday, 30),
             "Your Shopping List": make_shopping_list(root),
-            "Ingredients": make_ingredients(root),
+            "Ingredients": IngredientsList(root),
             "Settings": make_settings(root),
         }
         for name, frame in self.frames.items():
@@ -280,55 +295,59 @@ def generate_edit_menu(options: list[tuple[str, str, EditMenuElem]], bottom_butt
         return holder
     return inner
 
-def make_virtual_pantry(parent: tk.Tk | ttk.Frame):
-    vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
-    list_frame = ttk.Frame(vp_frame)
-    list_frame.columnconfigure(0, weight=1)
-    list_frame.rowconfigure(0, weight=1)
-    ingr_list = ttk.Treeview(list_frame, columns=["ingr", "qty"], show="headings")
-    scrollbar = ttk.Scrollbar(list_frame, command=ingr_list.yview)
-    ingr_list.config(yscrollcommand=scrollbar.set)
-    ingr_list.heading("ingr", text="Ingredient")
-    ingr_list.heading("qty", text="Quantity")
-    ingr_list.column("ingr", anchor="w")
-    ingr_list.column("qty", anchor="e")
-    example_ingredients = [f"Test Ingredient {i}" for i in range(20)]
-    test_units = ["lbs", "gal", "oz", "pkgs"]
-    for i, ingr in enumerate(example_ingredients, start=1):
-        amnt = random.randint(2, 60)
-        unit = random.choice(test_units)
-        ingr_list.insert("", "end", text="", values=[ingr, f"{amnt} {unit}"])
-    scrollbar.grid(row=0, column=1, sticky="ns")
-    ingr_list.grid(row=0, column=0, sticky="news")
-    list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
-    vp_frame.rowconfigure(0, weight=1)
-    vp_frame.columnconfigure(0, weight=1)
-    vp_frame.columnconfigure(1, weight=1)
-    bottom_buttons: list[ttk.Button] = []
-    for col, name in enumerate(("Add New", "Edit Selected")):
-        button = ttk.Button(vp_frame, text=name)
-        button.grid(row=1, column=col, sticky="ew")
-        bottom_buttons.append(button)
-    edit_ingr_menu = generate_edit_menu(
-        [
-            ("Ingredient", "Milk", "display"),
-            ("Amount", "1 gal", "entry"),
-        ],
-        ["Cancel", 1, "Save Changes"],
-    )
-    add_ingr_menu = generate_edit_menu(
-        [
-            ("Ingredient", "Milk", "db search options"),
-            ("Amount", "1 gal", "entry"),
-        ],
-        ["Cancel", 1, "Add Ingredient to Pantry"],
-    )
-    bottom_buttons[0].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Add Ingredient", add_ingr_menu))
-    bottom_buttons[1].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Ingredient", edit_ingr_menu))
+
+class VirtualPantry:
+    name: str = "Virtual Pantry"
+
+    def __init__(self, parent: tk.Tk | ttk.Frame):
+        vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
+        list_frame = ttk.Frame(vp_frame)
+        list_frame.columnconfigure(0, weight=1)
+        list_frame.rowconfigure(0, weight=1)
+        ingr_list = ttk.Treeview(list_frame, columns=["ingr", "qty"], show="headings")
+        scrollbar = ttk.Scrollbar(list_frame, command=ingr_list.yview)
+        ingr_list.config(yscrollcommand=scrollbar.set)
+        ingr_list.heading("ingr", text="Ingredient")
+        ingr_list.heading("qty", text="Quantity")
+        ingr_list.column("ingr", anchor="w")
+        ingr_list.column("qty", anchor="e")
+        example_ingredients = [f"Test Ingredient {i}" for i in range(20)]
+        test_units = ["lbs", "gal", "oz", "pkgs"]
+        for i, ingr in enumerate(example_ingredients, start=1):
+            amnt = random.randint(2, 60)
+            unit = random.choice(test_units)
+            ingr_list.insert("", "end", text="", values=[ingr, f"{amnt} {unit}"])
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        ingr_list.grid(row=0, column=0, sticky="news")
+        list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
+        vp_frame.rowconfigure(0, weight=1)
+        vp_frame.columnconfigure(0, weight=1)
+        vp_frame.columnconfigure(1, weight=1)
+        bottom_buttons: list[ttk.Button] = []
+        for col, name in enumerate(("Add New", "Edit Selected")):
+            button = ttk.Button(vp_frame, text=name)
+            button.grid(row=1, column=col, sticky="ew")
+            bottom_buttons.append(button)
+        edit_ingr_menu = generate_edit_menu(
+            [
+                ("Ingredient", "Milk", "display"),
+                ("Amount", "1 gal", "entry"),
+            ],
+            ["Cancel", 1, "Save Changes"],
+        )
+        add_ingr_menu = generate_edit_menu(
+            [
+                ("Ingredient", "Milk", "db search options"),
+                ("Amount", "1 gal", "entry"),
+            ],
+            ["Cancel", 1, "Add Ingredient to Pantry"],
+        )
+        bottom_buttons[0].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Add Ingredient", add_ingr_menu))
+        bottom_buttons[1].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Ingredient", edit_ingr_menu))
 
 
-    return vp_frame
-    
+        return vp_frame
+        
 def make_meal_catalogue(parent: tk.Tk | ttk.Frame):
     meal_frame = ttk.Frame(parent, name="meal_catalogue", padding=20)
     list_frame = ttk.Frame(meal_frame)
