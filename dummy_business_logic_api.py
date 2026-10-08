@@ -16,3 +16,9 @@ class BusinessLogic:
     def load_ingredient_list(self) -> list[Ingredient]:
         """Code to generate dummy ingredients"""
         return [f"Test Ingredient {i}" for i in range(20)]
+
+    def update_ingredient(self, updated_ingredient: Ingredient):
+        pass
+
+    def update_vpantry_entry(self, ingr: Ingredient, new_quant: Quantity):
+        pass

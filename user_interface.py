@@ -18,19 +18,19 @@ def main():
 
 class Application:
     root: tk.Tk
-    interface: "Interface"
+    interface: "UserInterface"
 
     def __init__(self):
         self.root = tk.Tk()
         self.root.wm_title("Meal Planner")
         self.root.geometry("550x400")
         self.logic = BusinessLogic()
-        self.interface = Interface(self.root, self.logic)
+        self.interface = UserInterface(self.root, self.logic)
 
     def run(self):
         self.root.mainloop()
 
-class Interface:
+class UserInterface:
     def __init__(self, root: tk.Tk, logic: BusinessLogic):
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
@@ -76,19 +76,27 @@ class DummyInterface:
     name: str
     frame: ttk.Frame
 
-def make_buttons_frame(put_in: tk.Misc, button_instructions: Iterable[str | int], button_weight: int | None = None) -> tuple[ttk.Frame, list[ttk.Button]]:
+def make_buttons_frame(put_in: tk.Misc, button_instructions: Iterable[tuple[str, Callable[[], None]] | str | int], button_weight: int | None = None) -> tuple[ttk.Frame, list[ttk.Button]]:
     bottom_buttons_frame = ttk.Frame(put_in)
     buttons = []
+
+    def generate_button(name: str, command=None):
+        button = ttk.Button(bottom_buttons_frame, text=name)
+        if command is not None:
+            button.config(command=command)
+        if button_weight is not None and button_weight > 0:
+            bottom_buttons_frame.columnconfigure(i, weight=button_weight)
+            button.grid(row=0, column=i, sticky="ew")
+        else:
+            button.grid(row=0, column=i)
+        buttons.append(button)
+
     for i, slot in enumerate(button_instructions):
         match slot:
             case str(name):
-                button = ttk.Button(bottom_buttons_frame, text=name)
-                if button_weight is not None and button_weight > 0:
-                    bottom_buttons_frame.columnconfigure(i, weight=button_weight)
-                    button.grid(row=0, column=i, sticky="ew")
-                else:
-                    button.grid(row=0, column=i)
-                buttons.append(button)
+                generate_button(name)
+            case str(name), command:
+                generate_button(name, command)
             case int(weight):
                 bottom_buttons_frame.columnconfigure(i, weight=weight)
     return bottom_buttons_frame, buttons
@@ -295,21 +303,24 @@ def generate_edit_menu(options: list[tuple[str, str, EditMenuElem]], bottom_butt
 
 class VirtualPantry:
     name: str = "Virtual Pantry"
+    frame: ttk.Frame
+    ingr_list: ttk.Treeview
 
     def __init__(self, parent: tk.Tk | ttk.Frame, logic: BusinessLogic):
         self.frame = vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
         list_frame = ttk.Frame(vp_frame)
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
-        ingr_list = ttk.Treeview(list_frame, columns=["ingr", "qty"], show="headings")
+        self.ingr_list = ingr_list = ttk.Treeview(list_frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
         scrollbar = ttk.Scrollbar(list_frame, command=ingr_list.yview)
         ingr_list.config(yscrollcommand=scrollbar.set)
         ingr_list.heading("ingr", text="Ingredient")
         ingr_list.heading("qty", text="Quantity")
         ingr_list.column("ingr", anchor="w")
         ingr_list.column("qty", anchor="e")
-        for ingr, quant in logic.load_virtual_pantry_contents():
-            ingr_list.insert("", "end", text="", values=[ingr, quant])
+        self.ingredients = logic.load_virtual_pantry_contents()
+        for i, (ingr, quant) in enumerate(self.ingredients):
+            ingr_list.insert("", "end", id=i, text="", values=[ingr, quant])
         
         scrollbar.grid(row=0, column=1, sticky="ns")
         ingr_list.grid(row=0, column=0, sticky="news")
@@ -322,6 +333,8 @@ class VirtualPantry:
             button = ttk.Button(vp_frame, text=name)
             button.grid(row=1, column=col, sticky="ew")
             bottom_buttons.append(button)
+
+        self.add_button, self.edit_button = bottom_buttons;
         edit_ingr_menu = generate_edit_menu(
             [
                 ("Ingredient", "Milk", "display"),
@@ -336,8 +349,30 @@ class VirtualPantry:
             ],
             ["Cancel", 1, "Add Ingredient to Pantry"],
         )
-        bottom_buttons[0].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Add Ingredient", add_ingr_menu))
-        bottom_buttons[1].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Ingredient", edit_ingr_menu))
+        # bottom_buttons[0].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Add Ingredient", add_ingr_menu))
+        # bottom_buttons[1].config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Ingredient", edit_ingr_menu))
+        self.add_button.config(command=self.add_button_command)
+        self.edit_button.config(command=self.edit_button_command, state=tk.DISABLED)
+        self.selection_update_binding = ingr_list.bind("<<TreeviewSelect>>", self.on_selection_change)
+
+    def on_selection_change(self, tv: tk.Event) -> object:
+        self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
+    
+    def is_ingr_selected(self):
+        return len(self.ingr_list.selection()) > 0
+
+    def get_selection(self) -> int | None:
+        selection = self.ingr_list.selection()
+        if len(selection) == 0:
+            return None
+        else:
+            return int(selection[0])
+
+    def add_button_command(self):
+        print(self.get_selection())
+
+    def edit_button_command(self):
+        pass
 
 class IngredientsList:
     name: str = "Ingredients"
