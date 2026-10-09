@@ -2,24 +2,42 @@ from dataclasses import dataclass, field, InitVar
 from tkinter import ttk
 from tkinter import scrolledtext as scrtxt
 import tkinter as tk
+from typing import Callable, Iterable
 
-# add_event_menu, edit_event_menu = (generate_edit_menu(
-#     [
-#         ("Meal", "Foobar Salad", "db search options"),
-#         ("Time", "10:52", "entry"),
-#         ("Date", "9/30/26", "entry"),
-#         ("Repeat", "Until stopping date", "fixed options"),
-#         ("Interval", "Weekly", "fixed options"),
-#         ("Stop on", "9/30/27", "entry"),
-#     ],
-#     ["Cancel", 1, save_button_name],
-# ) for save_button_name in ["Create Event", "Update Event"])
+# see bottom of file for
+# `import user_interface_impl`
 
+@dataclass(slots=True)
 class MenuField[T]:
     label: ttk.Label
     elem: T
 
+class EditMenu:
+    def __init__(self, parent: tk.Toplevel) -> None:
+        self.frame = ttk.Frame(parent, padding=10)
+        # self.frame.columnconfigure(2, weight=1)
+        self.frame.columnconfigure(1, minsize=10)
+        self.next_row = 1
+
+    def insert[T: SharedData](self, name: str, elem: T) -> MenuField[T]:
+        field_label = ttk.Label(self.frame, text=name)
+        field_label.grid(row=self.next_row, column=0, sticky="ne")
+        elem.insert(row=self.next_row, column=2)
+        menu_field = MenuField(field_label, elem)
+        self.next_row += 1
+        return menu_field
+
+    def finish_construction(self, bottom_buttons: Iterable[tuple[str, Callable[[], None]] | str | int]) -> list[ttk.Button]:
+        in_between_row = self.next_row
+        bottom_buttons_row = self.next_row + 1
+        self.frame.rowconfigure(in_between_row, weight=1, minsize=10)
+        bottom_buttons_frame, buttons = user_interface_impl.make_buttons(self.frame, bottom_buttons)
+        bottom_buttons_frame.grid(column=0, row=bottom_buttons_row, columnspan=3, sticky="ew")
+        return buttons
+
+
 class EventEditor:
+    """EXAMPLE CASE"""
     meal: MenuField[DbSearchOptions]
     time: MenuField[Entry]
     date: MenuField[Entry]
@@ -27,68 +45,62 @@ class EventEditor:
     interval: MenuField[FixedOptions]
     stop_on: MenuField[Entry]
 
-@dataclass
+
 class SharedData:
-    container: InitVar[ttk.Frame]
+    def insert(self, row: int, column: int): pass
 
-    option_display_name: str
 
-    def insert(self, row: int): pass
-
-@dataclass(match_args=True, slots=True)
 class Display(SharedData):
-    display: ttk.Label = field(init=False)
-    def __post_init__(self, container: ttk.Frame):
-        self.display = ttk.Label(container)
+    display: ttk.Label
+    def __init__(self, container: ttk.Frame, initial_text: str):
+        self.display = ttk.Label(container, text=initial_text)
 
-    def insert(self, row: int):
-        self.display.grid(row=row, column=1, sticky="nw")
+    def insert(self, row: int, column: int):
+        self.display.grid(row=row, column=column, sticky="nw")
 
     def set_text(self, text: str):
         self.display.config(text=text)
 
-@dataclass(match_args=True, slots=True)
-class Entry(SharedData):
-    input_field: ttk.Entry = field(init=False)
-    input_text: tk.StringVar = field(init=False)
 
-    def __post_init__(self, container: ttk.Frame):
+class Entry(SharedData):
+    input_field: ttk.Entry
+
+    def __init__(self, container: ttk.Frame, initial_text: str = ""):
         self.input_field = ttk.Entry(container)
-        self.input_text = tk.StringVar(self.input_field)
+        self.input_field.insert(tk.END, initial_text)
     
-    def insert(self, row: int):
-        self.input_field.grid(row=row, column=1, sticky="nw")
+    def insert(self, row: int, column: int):
+        self.input_field.grid(row=row, column=column, sticky="nw")
     
     def set_text(self, text: str):
-        self.input_text.set(text)
+        self.input_field.delete(0, tk.END)
+        self.input_field.insert(tk.END, text)
 
     def get_text(self):
-        return self.input_text.get()
+        return self.input_field.get()
 
-@dataclass(match_args=True, slots=True)
+
 class Button(SharedData):
-    button_text: InitVar[str]
+    button: ttk.Button
 
-    button: ttk.Button = field(init=False)
-
-    def __post_init__(self, container: ttk.Frame, button_text: str):
+    def __init__(self, container: ttk.Frame, button_text: str):
         self.button = ttk.Button(container, text=button_text)
     
-    def insert(self, row: int):
-        self.button.grid(row=row, column=1, sticky="nw")
+    def insert(self, row: int, column: int):
+        self.button.grid(row=row, column=column, sticky="nw")
     
     def set_text(self, text: str):
         self.button.config(text=text)
 
-@dataclass(match_args=True, slots=True)
+
 class Text(SharedData):
-    input_field: scrtxt.ScrolledText = field(init=False)
+    input_field: scrtxt.ScrolledText
     
-    def __post_init__(self, container: ttk.Frame):
+    def __init__(self, container: ttk.Frame):
         self.input_field = scrtxt.ScrolledText(container, height=3)
 
-    def insert(self, row: int):
-        self.input_field.grid(row=row, column=1, sticky="nw")
+    def insert(self, row: int, column: int):
+        self.input_field.grid(row=row, column=column, sticky="nw")
 
     def clear_text(self):
         self.input_field.delete("0.0", tk.END)
@@ -100,29 +112,47 @@ class Text(SharedData):
     def get_text(self):
         return self.input_field.get("0.0", tk.END)
 
-@dataclass(match_args=True, slots=True)
+# TODO: Custom Input for quantities
+class QuantityEntry(SharedData):
+    input_field: ttk.Entry
+    
+    def __init__(self, container: ttk.Frame, initial_text: str = ""):
+        self.input_field = ttk.Entry(container)
+        self.input_field.insert(tk.END, initial_text)
+    
+    def insert(self, row: int, column: int):
+        self.input_field.grid(row=row, column=column, sticky="nw")
+    
+    def set_text(self, text: str):
+        self.input_field.delete(0, tk.END)
+        self.input_field.insert(tk.END, text)
+    
+    def get_text(self):
+        return self.input_field.get()
+
+
 class FixedOptions(SharedData):
-    pass
+    def __init__(self, container: ttk.Frame): pass
 
-@dataclass(match_args=True, slots=True)
+
 class DbSearchOptions(SharedData):
-    pass
+    def __init__(self, container: ttk.Frame): pass
 
-@dataclass(match_args=True, slots=True)
+
 class Image(SharedData):
-    pass
+    def __init__(self, container: ttk.Frame): pass
 
-@dataclass(match_args=True, slots=True)
+
 class ListDisplay(SharedData):
-    pass
+    def __init__(self, container: ttk.Frame): pass
 
-@dataclass(match_args=True, slots=True)
+
 class Checkbox(SharedData):
-    pass
+    def __init__(self, container: ttk.Frame): pass
 
-@dataclass(match_args=True, slots=True)
+
 class SeparatingBar:
-    pass
+    def __init__(self, container: ttk.Frame): pass
 
 """
 match option_type:
@@ -200,3 +230,6 @@ match option_type:
         bar.grid(row=i, column=0, columnspan=2, sticky="ew")
         continue
 """
+
+# has to live here instead of at the top b/c of circular import issues
+import user_interface_impl
