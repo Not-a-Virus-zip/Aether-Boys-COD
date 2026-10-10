@@ -2,7 +2,7 @@ from tkinter import ttk
 import tkinter as tk
 
 from . import edit_menu as em
-from .. import dummy_business_logic_api as bl
+import dummy_business_logic_api as bl
 
 class VirtualPantry:
     name: str = "Virtual Pantry"
