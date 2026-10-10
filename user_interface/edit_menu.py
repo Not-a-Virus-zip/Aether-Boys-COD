@@ -1,11 +1,20 @@
-from dataclasses import dataclass, field, InitVar
+from dataclasses import dataclass
 from tkinter import ttk
 from tkinter import scrolledtext as scrtxt
 import tkinter as tk
 from typing import Callable, Iterable
 
-# see bottom of file for
-# `import user_interface_impl`
+from . import user_interface_impl
+
+def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
+    edit_menu = tk.Toplevel(root)
+    edit_menu.wm_title(name)
+    edit_menu.grid_propagate(True)
+    edit_frame = edit_frame_maker(edit_menu)
+    edit_menu.columnconfigure(0, weight=1)
+    edit_menu.rowconfigure(0, weight=1)
+    edit_frame.grid(row=0, column=0, sticky="nsew")
+    edit_menu.focus()
 
 @dataclass(slots=True)
 class MenuField[T]:
@@ -230,6 +239,3 @@ match option_type:
         bar.grid(row=i, column=0, columnspan=2, sticky="ew")
         continue
 """
-
-# has to live here instead of at the top b/c of circular import issues
-import user_interface_impl

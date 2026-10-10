@@ -7,10 +7,13 @@ import tkinter as tk
 from dataclasses import dataclass
 import enum
 
-import dummy_business_logic_api as bl
-import edit_menu_experiment as em
+from . import (
+    edit_menu as em,
+    virtual_pantry as vp
+)
+from .. import dummy_business_logic_api as bl
 
-def main():
+def test_ui():
     app = Application()
 
     global placeholder_image
@@ -45,7 +48,7 @@ class UserInterface:
             self.ingredients,
             self.settings,
         ) = (
-            VirtualPantry(root, logic),
+            vp.VirtualPantry(root, logic),
             make_meal_catalogue(root),
             make_calendar(root, DayOfTheWeek.Saturday, 30),
             make_shopping_list(root),
@@ -169,23 +172,13 @@ def make_calendar(parent: tk.Tk | ttk.Frame, starting_day: DayOfTheWeek, days_in
         ["Cancel", 1, save_button_name],
     ) for save_button_name in ["Create Event", "Update Event"])
 
-    add.config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Add Event", add_event_menu))
-    edit.config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Event", edit_event_menu))
+    add.config(command=lambda: em.show_edit_menu(parent.winfo_toplevel(), "Add Event", add_event_menu))
+    edit.config(command=lambda: em.show_edit_menu(parent.winfo_toplevel(), "Edit Event", edit_event_menu))
     # TODO: Edit Menu
     return DummyInterface("Calendar", holder_frame)
 
 type EditMenuElem = Literal["entry", "text", "fixed options", "db search options", "list display", "display", "image", "separating bar", "checkbox", "button", "add ingredient"]
 
-
-def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
-    edit_menu = tk.Toplevel(root)
-    edit_menu.wm_title(name)
-    edit_menu.grid_propagate(True)
-    edit_frame = edit_frame_maker(edit_menu)
-    edit_menu.columnconfigure(0, weight=1)
-    edit_menu.rowconfigure(0, weight=1)
-    edit_frame.grid(row=0, column=0, sticky="nsew")
-    edit_menu.focus()
 
 placeholder_image: tk.PhotoImage
 
@@ -281,97 +274,6 @@ def generate_edit_menu(options: list[tuple[str, str, EditMenuElem]], bottom_butt
         return holder
     return inner
 
-
-class VirtualPantry:
-    name: str = "Virtual Pantry"
-    frame: ttk.Frame
-    pantry_display: ttk.Treeview
-    pantry_contents: list[tuple[bl.Ingredient, bl.Quantity]]
-    add_button: ttk.Button
-    edit_button: ttk.Button
-
-    def __init__(self, parent: tk.Tk | ttk.Frame, logic: bl.BusinessLogic):
-        self.frame = vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
-        list_frame = ttk.Frame(vp_frame)
-        list_frame.columnconfigure(0, weight=1)
-        list_frame.rowconfigure(0, weight=1)
-        self.pantry_display = ingr_list = ttk.Treeview(list_frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
-        scrollbar = ttk.Scrollbar(list_frame, command=ingr_list.yview)
-        ingr_list.config(yscrollcommand=scrollbar.set)
-        ingr_list.heading("ingr", text="Ingredient")
-        ingr_list.heading("qty", text="Quantity")
-        ingr_list.column("ingr", anchor="w")
-        ingr_list.column("qty", anchor="e")
-        self.pantry_contents = logic.load_virtual_pantry_contents()
-        for i, (ingr, quant) in enumerate(self.pantry_contents):
-            ingr_list.insert("", "end", id=i, text="", values=[ingr, quant])
-        
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        ingr_list.grid(row=0, column=0, sticky="news")
-        list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
-        vp_frame.rowconfigure(0, weight=1)
-        vp_frame.columnconfigure(0, weight=1)
-        vp_frame.columnconfigure(1, weight=1)
-        bottom_buttons: list[ttk.Button] = []
-        for col, name in enumerate(("Add New", "Edit Selected")):
-            button = ttk.Button(vp_frame, text=name)
-            button.grid(row=1, column=col, sticky="ew")
-            bottom_buttons.append(button)
-
-        self.add_button, self.edit_button = bottom_buttons
-        edit_ingr_menu = generate_edit_menu(
-            [
-                ("Ingredient", "Milk", "display"),
-                ("Amount", "1 gal", "entry"),
-            ],
-            ["Cancel", 1, "Save Changes"],
-        )
-        add_ingr_menu = generate_edit_menu(
-            [
-                ("Ingredient", "Milk", "db search options"),
-                ("Amount", "1 gal", "entry"),
-            ],
-            ["Cancel", 1, "Add Ingredient to Pantry"],
-        )
-        self.add_button.config(command=self.press_add_button)
-        self.edit_button.config(command=self.press_edit_button, state=tk.DISABLED)
-        ingr_list.bind("<<TreeviewSelect>>", self.on_selection_change)
-
-    def on_selection_change(self, tv: tk.Event) -> object:
-        self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
-    
-    def is_ingr_selected(self) -> bool:
-        return len(self.pantry_display.selection()) != 0
-
-    def get_selected(self) -> tuple[bl.Ingredient, bl.Quantity] | None:
-        selection = self.pantry_display.selection()
-        return None if len(selection) == 0 else self.pantry_contents[int(selection[0])]
-
-    def press_add_button(self):
-        print(self.get_selected())
-
-    def press_edit_button(self):
-        selection = self.get_selected()
-        assert selection is not None, "Edit button should be disabled when nothing is selected"
-        name, qty = selection
-        show_edit_menu(
-            self.frame.winfo_toplevel(),
-            "Edit Ingredient",
-            lambda tl: VPantryEditMenu(tl, name, qty).frame
-        )
-
-class VPantryEditMenu(em.EditMenu):
-    ingredient_name: em.MenuField[em.Display]
-    amount: em.MenuField[em.QuantityEntry]
-    save_button: ttk.Button
-    cancel_button: ttk.Button
-
-    def __init__(self, container: tk.Toplevel, ingredient_name: str, initial_amount: str) -> None:
-        super().__init__(container)
-        self.ingredient_name = self.insert("Ingredient", em.Display(self.frame, ingredient_name))
-        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, initial_amount))
-        self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
-
 class IngredientsList:
     name: str = "Ingredients"
     frame: ttk.Frame
@@ -419,7 +321,7 @@ class IngredientsList:
         return None if len(selection) == 0 else self.ingr_list[int(selection[0])]
     
     def press_add_button(self):
-        show_edit_menu(
+        em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Create New Ingredient",
             lambda tl: IngredientEditMenu(tl, "").frame
@@ -429,7 +331,7 @@ class IngredientsList:
         selection = self.get_selected()
         assert selection is not None, "Edit button should be disabled when nothing is selected"
         name = selection
-        show_edit_menu(
+        em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
             lambda tl: IngredientEditMenu(tl, name).frame
@@ -487,7 +389,7 @@ def make_meal_catalogue(parent: tk.Tk | ttk.Frame):
     for col, name in enumerate(["Add New", "Edit Selected"]):
         button = ttk.Button(meal_frame, text=name)
         button.grid(row=1, column=col, sticky="ew")
-        button.config(command=lambda: show_edit_menu(parent.winfo_toplevel(), "Edit Meal", edit_meal_menu))
+        button.config(command=lambda: em.show_edit_menu(parent.winfo_toplevel(), "Edit Meal", edit_meal_menu))
     return DummyInterface("Meal Catalog", meal_frame)
 
 
@@ -572,6 +474,6 @@ def make_settings(parent: tk.Tk | ttk.Frame):
 
 
 if __name__ == '__main__':
-    main()
+    test_ui()
 
 
