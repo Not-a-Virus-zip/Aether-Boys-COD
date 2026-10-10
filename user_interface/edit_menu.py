@@ -4,7 +4,10 @@ from tkinter import scrolledtext as scrtxt
 import tkinter as tk
 from typing import Callable, Iterable
 
-from . import user_interface_impl
+import pint
+
+import dummy_business_logic_api as bl
+from . import user_interface_impl as ui
 
 def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
     edit_menu = tk.Toplevel(root)
@@ -40,7 +43,7 @@ class EditMenu:
         in_between_row = self.next_row
         bottom_buttons_row = self.next_row + 1
         self.frame.rowconfigure(in_between_row, weight=1, minsize=10)
-        bottom_buttons_frame, buttons = user_interface_impl.make_buttons(self.frame, bottom_buttons)
+        bottom_buttons_frame, buttons = ui.make_buttons(self.frame, bottom_buttons)
         bottom_buttons_frame.grid(column=0, row=bottom_buttons_row, columnspan=3, sticky="ew")
         return buttons
 
@@ -124,10 +127,9 @@ class Text(SharedData):
 # TODO: Custom Input for quantities
 class QuantityEntry(SharedData):
     input_field: ttk.Entry
-    
-    def __init__(self, container: ttk.Frame, initial_text: str = ""):
+    def __init__(self, container: ttk.Frame, quantity: pint.Quantity):
         self.input_field = ttk.Entry(container)
-        self.input_field.insert(tk.END, initial_text)
+        self.input_field.insert(tk.END, ui.fmt_qty(quantity))
     
     def insert(self, row: int, column: int):
         self.input_field.grid(row=row, column=column, sticky="nw")
@@ -138,6 +140,10 @@ class QuantityEntry(SharedData):
     
     def get_text(self):
         return self.input_field.get()
+
+    def get_quantity(self) -> pint.Quantity:
+        parsed = bl.units.parse_expression(self.get_text())
+        return parsed
 
 
 class FixedOptions(SharedData):

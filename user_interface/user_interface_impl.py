@@ -7,12 +7,18 @@ import tkinter as tk
 from dataclasses import dataclass
 import enum
 
+import pint
+
 from . import (
     edit_menu as em,
     virtual_pantry as vp,
     ingredients_list as il,
 )
 import dummy_business_logic_api as bl
+
+
+def fmt_qty(qty: pint.Quantity) -> str:
+    return f"{qty:~P}"
 
 def test_ui():
     app = Application()
@@ -67,20 +73,6 @@ class UserInterface:
 def show_click(info):
     return lambda: messagebox.showinfo("This is a Button", f"You have clicked '{info}'.")
 
-class DayOfTheWeek(enum.Enum):
-    Sunday = 0
-    Monday = 1
-    Tuesday = 2
-    Wednesday = 3
-    Thursday = 4
-    Friday = 5
-    Saturday = 6
-
-@dataclass
-class DummyInterface:
-    name: str
-    frame: ttk.Frame
-
 def make_buttons(put_in: tk.Misc, button_instructions: Iterable[tuple[str, Callable[[], None]] | str | int], button_weight: int | None = None) -> tuple[ttk.Frame, list[ttk.Button]]:
     bottom_buttons_frame = ttk.Frame(put_in)
     buttons = []
@@ -105,6 +97,20 @@ def make_buttons(put_in: tk.Misc, button_instructions: Iterable[tuple[str, Calla
             case int(weight):
                 bottom_buttons_frame.columnconfigure(i, weight=weight)
     return bottom_buttons_frame, buttons
+
+@dataclass
+class DummyInterface:
+    name: str
+    frame: ttk.Frame
+
+class DayOfTheWeek(enum.Enum):
+    Sunday = 0
+    Monday = 1
+    Tuesday = 2
+    Wednesday = 3
+    Thursday = 4
+    Friday = 5
+    Saturday = 6
 
 def make_calendar(parent: tk.Tk | ttk.Frame, starting_day: DayOfTheWeek, days_in_month: int):
     holder_frame = ttk.Frame(parent, name="calendar", padding=20)

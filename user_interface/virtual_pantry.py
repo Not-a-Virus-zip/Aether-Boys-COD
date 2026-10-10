@@ -1,10 +1,16 @@
 from tkinter import ttk
 import tkinter as tk
 
-from . import edit_menu as em
+import pint
+
+from . import (
+    edit_menu as em,
+    user_interface_impl as ui,
+)
 import dummy_business_logic_api as bl
 
 class VirtualPantry:
+    logic: bl.BusinessLogic
     name: str = "Virtual Pantry"
     frame: ttk.Frame
     pantry_display: ttk.Treeview
@@ -13,23 +19,24 @@ class VirtualPantry:
     edit_button: ttk.Button
 
     def __init__(self, parent: tk.Tk | ttk.Frame, logic: bl.BusinessLogic):
+        self.logic = logic
         self.frame = vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
         list_frame = ttk.Frame(vp_frame)
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
-        self.pantry_display = ingr_list = ttk.Treeview(list_frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
-        scrollbar = ttk.Scrollbar(list_frame, command=ingr_list.yview)
-        ingr_list.config(yscrollcommand=scrollbar.set)
-        ingr_list.heading("ingr", text="Ingredient")
-        ingr_list.heading("qty", text="Quantity")
-        ingr_list.column("ingr", anchor="w")
-        ingr_list.column("qty", anchor="e")
-        self.pantry_contents = logic.load_virtual_pantry_contents()
-        for i, (ingr, quant) in enumerate(self.pantry_contents):
-            ingr_list.insert("", "end", id=i, text="", values=[ingr, quant])
+        self.pantry_display = pantry_disp = ttk.Treeview(list_frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
+        scrollbar = ttk.Scrollbar(list_frame, command=pantry_disp.yview)
+        pantry_disp.config(yscrollcommand=scrollbar.set)
+        pantry_disp.heading("ingr", text="Ingredient")
+        pantry_disp.heading("qty", text="Quantity")
+        pantry_disp.column("ingr", anchor="w")
+        pantry_disp.column("qty", anchor="e")
+
+        self.pantry_contents = []
+        self.refresh_pantry()
         
         scrollbar.grid(row=0, column=1, sticky="ns")
-        ingr_list.grid(row=0, column=0, sticky="news")
+        pantry_disp.grid(row=0, column=0, sticky="news")
         list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
         vp_frame.rowconfigure(0, weight=1)
         vp_frame.columnconfigure(0, weight=1)
@@ -43,7 +50,14 @@ class VirtualPantry:
         self.add_button, self.edit_button = bottom_buttons
         self.add_button.config(command=self.press_add_button)
         self.edit_button.config(command=self.press_edit_button, state=tk.DISABLED)
-        ingr_list.bind("<<TreeviewSelect>>", self.on_selection_change)
+        pantry_disp.bind("<<TreeviewSelect>>", self.on_selection_change)
+
+    def refresh_pantry(self):
+        if len(self.pantry_contents) > 0:
+            self.pantry_display.delete(*range(len(self.pantry_contents)))
+        self.pantry_contents = self.logic.load_virtual_pantry_contents()
+        for i, (ingr, qty) in enumerate(self.pantry_contents):
+            self.pantry_display.insert("", "end", id=i, text="", values=[ingr, ui.fmt_qty(qty)])
 
     def on_selection_change(self, tv: tk.Event) -> object:
         self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
@@ -65,17 +79,39 @@ class VirtualPantry:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
-            lambda tl: VPantryEditMenu(tl, name, qty).frame
+            lambda tl: VPantryEditMenu(self.logic, self, tl, name, qty).frame
         )
 
+    
+
 class VPantryEditMenu(em.EditMenu):
+    # TODO: TEMP FIELDS
+    logic: bl.BusinessLogic
+    pantry: VirtualPantry
+
+    container: tk.Toplevel
     ingredient_name: em.MenuField[em.Display]
     amount: em.MenuField[em.QuantityEntry]
     save_button: ttk.Button
     cancel_button: ttk.Button
 
-    def __init__(self, container: tk.Toplevel, ingredient_name: str, initial_amount: str) -> None:
+    def __init__(self, logic: bl.BusinessLogic, pantry: VirtualPantry, container: tk.Toplevel, ingredient: bl.Ingredient, qty: pint.Quantity) -> None:
         super().__init__(container)
-        self.ingredient_name = self.insert("Ingredient", em.Display(self.frame, ingredient_name))
-        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, initial_amount))
+        self.ingredient_name = self.insert("Ingredient", em.Display(self.frame, str(ingredient)))
+        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, qty))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
+        self.cancel_button.configure(command=container.destroy)
+        self.save_button.configure(command=self.save_and_close)
+        self.ingredient = ingredient
+        self.prev_quantity = qty
+        self.logic = logic
+        self.pantry = pantry
+        self.container = container
+
+    def save_and_close(self):
+        new_quantity = self.amount.elem.get_quantity()
+        # TODO: handle this case
+        assert self.prev_quantity.is_compatible_with(new_quantity)
+        self.logic.update_vpantry_entry(self.ingredient, new_quantity)
+        self.pantry.refresh_pantry()
+        self.container.destroy()
