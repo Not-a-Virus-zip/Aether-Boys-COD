@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
+import itertools
+import pint
 
 from . import (
     edit_menu as em,
@@ -8,6 +10,8 @@ from . import (
 import dummy_business_logic_api as bl
 
 class IngredientsList:
+    logic: bl.BusinessLogic
+
     name: str = "Ingredients"
     frame: ttk.Frame
     ingr_display: ttk.Treeview
@@ -16,19 +20,24 @@ class IngredientsList:
     add_button: ttk.Button
     edit_button: ttk.Button
 
-    def __init__(self, parent: tk.Tk | ttk.Frame, blogic: bl.BusinessLogic):
+    def __init__(self, parent: tk.Tk | ttk.Frame, logic: bl.BusinessLogic):
+        self.logic = logic
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
         list_frame = ttk.Frame(ingredients_frame)
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
-        self.ingr_display = ingr_display = ttk.Treeview(list_frame, columns=["name"], show="headings")
+        self.ingr_display = ingr_display = ttk.Treeview(list_frame, columns=["name", "tag", "units"], show="headings")
         scrollbar = ttk.Scrollbar(list_frame, command=ingr_display.yview)
         ingr_display.config(yscrollcommand=scrollbar.set)
         ingr_display.heading("name", text="Name")
         ingr_display.column("name", anchor="w")
-        self.ingr_list = blogic.load_ingredient_list()
+        ingr_display.heading("tag", text="Tag")
+        ingr_display.column("tag", anchor="e")
+        ingr_display.heading("units", text="Units")
+        ingr_display.column("units", anchor="e")
+        self.ingr_list = logic.load_ingredient_list()
         for i, ingr in enumerate(self.ingr_list):
-            ingr_display.insert("", "end", id=i, text="", values=[ingr])
+            ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ui.fmt_qty(ingr.measurement_type)])
         scrollbar.grid(row=0, column=1, sticky="ns")
         ingr_display.grid(row=0, column=0, sticky="news")
         list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
@@ -57,7 +66,7 @@ class IngredientsList:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Create New Ingredient",
-            lambda tl: IngredientEditMenu(tl, "").frame
+            lambda tl: IngredientEditMenu(self.logic, tl, None).frame
         )
 
     def press_edit_button(self):
@@ -67,19 +76,49 @@ class IngredientsList:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
-            lambda tl: IngredientEditMenu(tl, name).frame
+            lambda tl: IngredientEditMenu(self.logic, tl, name).frame
         )
 
 class IngredientEditMenu(em.EditMenu):
+    logic: bl.BusinessLogic
+
     ingredient_name: em.MenuField[em.Entry]
     tag: em.MenuField[em.DbSearchOptions]
-    fdcid: em.MenuField[em.Display]
+    # fdcid: em.MenuField[em.Display]
     ingredient_measurement: em.MenuField[em.DbSearchOptions]
+    db_search_display: ttk.Treeview
+    db_search_scrollbar: ttk.Scrollbar
 
-    def __init__(self, container: tk.Toplevel, ingredient_name: str) -> None:
+    def __init__(self, logic: bl.BusinessLogic, container: tk.Toplevel, ingredient: bl.Ingredient | None) -> None:
+        self.logic = logic
+        if ingredient is not None:
+            name = ingredient.name
+            tag = ingredient.tag
+            measure = str(ingredient.measurement_type)
+        else:
+            name = ""
+            tag = ""
+            measure = ""
+
         super().__init__(container)
-        self.ingredient_name        = self.insert("Ingredient Name", em.Entry(self.frame, ingredient_name))
-        self.tag                    = self.insert("Tag", em.DbSearchOptions(self.frame))
+
+        self.db_search_display = ttk.Treeview(self.frame, columns=["display"], show="headings")
+        self.db_search_scrollbar = ttk.Scrollbar(self.frame, command=self.db_search_display.yview)
+        self.db_search_display.config(yscrollcommand=self.db_search_scrollbar.set)
+        self.db_search_display.state(("disabled",))
+
+        self.ingredient_name        = self.insert("Ingredient Name", em.Entry(self.frame, name))
+        self.tag                    = self.insert("Tag", em.DbSearchOptions(self.frame, self.db_search_display, tag, self._search_tags, "Tags"))
         # self.fdcid                  = self.insert("FDC ID", em.Display(self.frame, fdcid))
-        self.ingredient_measurement = self.insert("Measurement Type", em.DbSearchOptions(self.frame))
+        self.ingredient_measurement = self.insert("Measurement Type", em.DbSearchOptions(self.frame, self.db_search_display, measure, self._search_measurements, "Measurements"))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
+
+        row_count = self.get_row_count()
+        self.db_search_display.grid(row=1, column=3, rowspan=row_count - 2, sticky="ns")
+        self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 2, sticky="ns")
+
+    def _search_tags(self, user_input: str) -> list[str]:
+        return self.logic.search_tags(user_input)[:20]
+
+    def _search_measurements(self, user_input: str) -> list[str]:
+        return [str(val) for val in self.logic.search_units(user_input)[:20]]

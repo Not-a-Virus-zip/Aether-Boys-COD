@@ -3,7 +3,6 @@ from tkinter import ttk
 from tkinter import scrolledtext as scrtxt
 import tkinter as tk
 from typing import Callable, Iterable
-
 import pint
 
 import dummy_business_logic_api as bl
@@ -42,10 +41,14 @@ class EditMenu:
     def finish_construction(self, bottom_buttons: Iterable[tuple[str, Callable[[], None]] | str | int]) -> list[ttk.Button]:
         in_between_row = self.next_row
         bottom_buttons_row = self.next_row + 1
+        self.next_row += 2
         self.frame.rowconfigure(in_between_row, weight=1, minsize=10)
         bottom_buttons_frame, buttons = ui.make_buttons(self.frame, bottom_buttons)
         bottom_buttons_frame.grid(column=0, row=bottom_buttons_row, columnspan=3, sticky="ew")
         return buttons
+
+    def get_row_count(self) -> int:
+        return self.next_row
 
 
 class EventEditor:
@@ -149,14 +152,57 @@ class QuantityEntry(SharedData):
 class FixedOptions(SharedData):
     def __init__(self, container: ttk.Frame): pass
 
-
 class DbSearchOptions(SharedData):
-    def __init__(self, container: ttk.Frame): pass
+    search_bar: ttk.Entry
+    text_var: tk.StringVar
+    side_bar_ref: ttk.Treeview
+    search_fn: Callable[[str], list[str]]
+    display_header: str
 
+    def __init__(self, container: ttk.Frame, side_bar: ttk.Treeview, initial_value: str, db_search: Callable[[str], list[str]], display_header: str = "Options"):
+        self.search_bar = ttk.Entry(container)
+        self.text_var = tk.StringVar(self.search_bar)
+        self.side_bar_ref = side_bar
+        self.search_fn = db_search
+        self.display_header = display_header
+        # TODO Figure out how to make this work
+        self.search_bar.config(textvariable=self.text_var)
+        self.search_bar.insert(tk.END, initial_value)
+        self.text_var.trace_add("write", self._on_text_update)
+        self.search_bar.bind("<FocusIn>", self._on_focus)
+
+    def insert(self, row: int, column: int):
+        self.search_bar.grid(row=row, column=column, sticky="nw")
+
+    def set_text(self, text: str):
+        self.text_var.set(text)
+
+    def get_text(self):
+        return self.text_var.get()
+
+    def show_search_results_in_side_bar(self):
+        self.side_bar_ref.state(("!disabled",))
+        self.side_bar_ref.delete(*self.side_bar_ref.get_children())
+        entries = self.search_fn(self.text_var.get())
+        if not entries:
+            self.side_bar_ref.config(selectmode=tk.NONE)
+            self.side_bar_ref.column("display", anchor=tk.CENTER)
+            self.side_bar_ref.insert("", "end", id=0, text="", values=["... No Results found ..."])
+        else:
+            self.side_bar_ref.column("display", anchor=tk.W)
+            self.side_bar_ref.config(selectmode=tk.BROWSE)
+            for i, entry in enumerate(entries):
+                self.side_bar_ref.insert("", "end", id=i, text="", values=[entry])
+        self.side_bar_ref.heading("display", text=self.display_header)
+
+    def _on_focus(self, event: tk.Event):
+        self.show_search_results_in_side_bar()
+
+    def _on_text_update(self, *_):
+        self.show_search_results_in_side_bar()
 
 class Image(SharedData):
     def __init__(self, container: ttk.Frame): pass
-
 
 class ListDisplay(SharedData):
     def __init__(self, container: ttk.Frame): pass

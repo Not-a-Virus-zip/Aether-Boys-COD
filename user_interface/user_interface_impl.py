@@ -17,7 +17,7 @@ from . import (
 import dummy_business_logic_api as bl
 
 
-def fmt_qty(qty: pint.Quantity) -> str:
+def fmt_qty(qty: pint.Quantity | pint.Unit) -> str:
     return f"{qty:~P}"
 
 def test_ui():
