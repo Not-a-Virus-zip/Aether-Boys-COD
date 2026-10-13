@@ -30,16 +30,18 @@ class IngredientsList:
         self.ingr_display = ingr_display = ttk.Treeview(list_frame, columns=["name", "tag", "units"], show="headings")
         scrollbar = ttk.Scrollbar(list_frame, command=ingr_display.yview)
         ingr_display.config(yscrollcommand=scrollbar.set)
+
+        # Note: for some reason, setting width=1 causes all columns distribute evenly. I don't know why.
         ingr_display.heading("name", text="Name")
-        ingr_display.column("name", anchor="w")
+        ingr_display.column("name", anchor="w", width=1)
         ingr_display.heading("tag", text="Tag")
-        ingr_display.column("tag", anchor="e")
+        ingr_display.column("tag", anchor="e", width=1)
         ingr_display.heading("units", text="Units")
-        ingr_display.column("units", anchor="e")
+        ingr_display.column("units", anchor="e", width=1)
 
         self.ingr_list = []
         self.refresh_ingredients()
-        
+
         scrollbar.grid(row=0, column=1, sticky="ns")
         ingr_display.grid(row=0, column=0, sticky="news")
         list_frame.grid(row=0, column=0, columnspan=2, sticky="news")

@@ -127,7 +127,7 @@ class Text(SharedData):
     def get_text(self):
         return self.input_field.get("0.0", tk.END)
 
-# TODO: Custom Input for quantities
+
 class QuantityEntry(SharedData):
     input_field: ttk.Entry
     def __init__(self, container: ttk.Frame, quantity: pint.Quantity):
@@ -158,6 +158,7 @@ class DbSearchOptions(SharedData):
     side_bar_ref: ttk.Treeview
     search_fn: Callable[[str], list[str]]
     display_header: str
+    entries: list[str]
 
     def __init__(self, container: ttk.Frame, side_bar: ttk.Treeview, initial_value: str, db_search: Callable[[str], list[str]], display_header: str = "Options"):
         self.search_bar = ttk.Entry(container)
@@ -165,7 +166,8 @@ class DbSearchOptions(SharedData):
         self.side_bar_ref = side_bar
         self.search_fn = db_search
         self.display_header = display_header
-        # TODO Figure out how to make this work
+        self.entries = []
+
         self.search_bar.config(textvariable=self.text_var)
         self.search_bar.insert(tk.END, initial_value)
         self.text_var.trace_add("write", self._on_text_update)
@@ -182,18 +184,25 @@ class DbSearchOptions(SharedData):
 
     def show_search_results_in_side_bar(self):
         self.side_bar_ref.state(("!disabled",))
+        self.side_bar_ref.bind("<<TreeviewSelect>>", self._on_select_search_results)
         self.side_bar_ref.delete(*self.side_bar_ref.get_children())
-        entries = self.search_fn(self.text_var.get())
-        if not entries:
+        self.entries = self.search_fn(self.text_var.get())
+        if not self.entries:
             self.side_bar_ref.config(selectmode=tk.NONE)
             self.side_bar_ref.column("display", anchor=tk.CENTER)
             self.side_bar_ref.insert("", "end", id=0, text="", values=["... No Results found ..."])
         else:
             self.side_bar_ref.column("display", anchor=tk.W)
             self.side_bar_ref.config(selectmode=tk.BROWSE)
-            for i, entry in enumerate(entries):
+            for i, entry in enumerate(self.entries):
                 self.side_bar_ref.insert("", "end", id=i, text="", values=[entry])
         self.side_bar_ref.heading("display", text=self.display_header)
+
+    def _on_select_search_results(self, event: tk.Event):
+        selected = self.side_bar_ref.selection()
+        if len(selected) >= 1:
+            selected_index = int(selected[0])
+            self.set_text(self.entries[selected_index])
 
     def _on_focus(self, event: tk.Event):
         self.show_search_results_in_side_bar()
@@ -207,10 +216,8 @@ class Image(SharedData):
 class ListDisplay(SharedData):
     def __init__(self, container: ttk.Frame): pass
 
-
 class Checkbox(SharedData):
     def __init__(self, container: ttk.Frame): pass
-
 
 class SeparatingBar:
     def __init__(self, container: ttk.Frame): pass
