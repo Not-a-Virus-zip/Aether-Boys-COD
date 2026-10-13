@@ -18,36 +18,16 @@ def get_connection():
 type Name = str
 type Tag = str
 
-# This method will build a query for any need
-# def run_filtered_query(query: str, accepted_filters: dict, order: str, filter_column = None, filter_value = None, asc = True) -> list[tuple[Name, Tag]]:
-#     if filter_column is not None and filter_value is not None:  # Only activates if a filter column/value is added
-#         query += 'WHERE '
-#         try:
-#             query += accepted_filters[filter_column.lower()] + ' LIKE '  # Checks if filter is good
-#         except(KeyError):
-#             raise ValueError(f'filter_column:{filter_column!r} is not in {list(accepted_filters.keys())}')
-#         query += '? ' + get_order(order, asc)
-#         with get_connection() as con:
-#             cur = con.cursor()
-#             ingredients = cur.execute(query, (f'%{filter_value}%',))
-#         return ingredients.fetchall()
-#     else:
-#         query += get_order(order, asc)
-#         with get_connection() as con:
-#             cur = con.cursor()
-#             ingredients = cur.execute(query, '')
-#         return ingredients.fetchall()
-
 
 # The foundation for querying the database
-class BaseDB:
-    query = None
+class SelectDB:
+    select_query = None
     accepted_filters = None
     accepted_sorts = None
 
     @classmethod
     def run_filtered_query(cls, order = None, filter_column = None, filter_value = None, asc = True) -> list[tuple[Name, Tag]]:
-        editable_query = cls.query
+        editable_query = cls.select_query
         if filter_column is not None and filter_value is not None:  # Only activates if a filter column/value is added
             filter_value = (f'%{filter_value}%',)
             editable_query += 'WHERE '
@@ -63,8 +43,8 @@ class BaseDB:
         editable_query += cls._get_order(order, asc)
         with get_connection() as con:
             cur = con.cursor()
-            ingredients = cur.execute(editable_query, filter_value)
-        return ingredients.fetchall()
+            rows = cur.execute(editable_query, filter_value)
+        return rows.fetchall()
 
     @classmethod
     def _get_order(cls, order: str, asc: bool) -> str:
