@@ -110,7 +110,7 @@ class IngredientEditMenu(em.EditMenu):
     db_search_scrollbar: ttk.Scrollbar
     container: tk.Toplevel
 
-    search_result: list[il_backend.Tag]
+    tag_search_results: list[il_backend.Tag]
 
     ingr_list: IngredientsList
     ingredient: ExistingIngredient | None
@@ -118,7 +118,7 @@ class IngredientEditMenu(em.EditMenu):
     def __init__(self, ingr_list: IngredientsList, container: tk.Toplevel, ingredient: ExistingIngredient | None) -> None:
         self.ingr_list = ingr_list
         self.container = container
-        self.search_result = []
+        self.tag_search_results = []
         self.ingredient = ingredient
         if ingredient is not None:
             name = ingredient.name
@@ -149,30 +149,25 @@ class IngredientEditMenu(em.EditMenu):
         self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 2, sticky="ns")
 
     def _search_tags(self, user_input: str) -> list[str]:
-        self.search_result = self.ingr_list.tag_backend.search_ingredient_tag_list(user_input)
-        return [tag.name for tag in self.search_result]
-        if len(search_result) == 1:
-            self.selected_tag = search_result[0]
-        else:
-            self.selected_tag = None
-        return search_result
+        self.tag_search_results = self.ingr_list.tag_backend.load_ingredient_tag_list() # (user_input)
+        return [tag.name for tag in self.tag_search_results]
 
     def _search_measurements(self, user_input: str) -> list[str]:
-        return [str(val) for val in self.ingr_list.backend.search_ingredient_units(user_input)]
+        return self.ingr_list.backend.search_ingredient_units(user_input)
 
     def save_and_close(self):
         new_name = self.ingredient_name.elem.get_text()
         new_tag_text: str = self.tag.elem.get_text()
         new_msmnt = self.ingredient_measurement.elem.get_text()
 
-        if len(self.search_result) == 1 and self.search_result[0].name == new_tag_text:
-            new_tag = self.search_result[0]
+        if len(self.tag_search_results) == 1 and self.tag_search_results[0].name == new_tag_text:
+            new_tag = self.tag_search_results[0]
         else:
             new_tag = self.ingr_list.tag_backend.create_tag(new_tag_text, "Ingredient")
 
         if self.ingredient is None:
             self.ingr_list.backend.create_ingredient(new_name, new_tag, new_msmnt)
         else:
-            self.ingr_list.backend.update_ingredient(self.ingredient.modify(name=new_name, tag=new_tag, measurement_type=new_msmnt))
+            self.ingr_list.backend.update_ingredient(self.ingredient.id, new_name,  new_tag, new_msmnt)
         self.ingr_list.refresh_ingredients()
         self.container.destroy()
