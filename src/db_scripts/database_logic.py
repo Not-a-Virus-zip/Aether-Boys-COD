@@ -10,12 +10,14 @@ type Tag = str
 class IngredientQuery(SelectDB):
 
     # Variables needed for SELECT
-    select_query = 'SELECT i.ingredientID, i.name, t.name ' \
+    select_query = 'SELECT i.ingredientID, i.name, t.name, mt.name ' \
                   'FROM Ingredient as i ' \
                   'LEFT JOIN Tag as t ' \
-                      'ON i.tagID = t.tagID '
-    accepted_filters = {'ingredient': 'i.name', 'tag': 't.name', 'id': 'i.ingredientID'}
-    accepted_sorts = {'ingredient': 'i.name', 'tag': 't.name', 'date': 'i.ingredientID'}
+                      'ON i.tagID = t.tagID '\
+                  'LEFT JOIN MeasureType as mt ' \
+                      'ON i.measureID = mt.measureID '
+    accepted_filters = {'ingredient': 'i.name', 'tag': 't.name', 'id': 'i.ingredientID', 'unit': 'mt.name'}
+    accepted_sorts = {'ingredient': 'i.name', 'tag': 't.name', 'date': 'i.ingredientID', 'unit': 'mt.name'}
 
     # Stores new data in the database
     @staticmethod
@@ -100,8 +102,8 @@ class MeasureTypeDB(SelectDB):
 
         select_query = 'SELECT *' \
                        'FROM MeasureType'
-        accepted_filters = {'id': 'measureID', 'name': 'name', 'dimension': 'dimension'}
-        accepted_sorts = {'date': 'measureID', 'name': 'name', 'dimension': 'dimension'}
+        accepted_filters = {'name': 'name', 'dimension': 'dimension', 'id': 'measureID'}
+        accepted_sorts = {'name': 'name', 'dimension': 'dimension', 'date': 'measureID'}
 
 
 
