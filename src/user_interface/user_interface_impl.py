@@ -60,7 +60,7 @@ class UserInterface:
             make_meal_catalogue(root),
             make_calendar(root, DayOfTheWeek.Saturday, 30),
             make_shopping_list(root),
-            il.IngredientsList(root, logic),
+            il.IngredientsList(root),
             make_settings(root),
         )
 

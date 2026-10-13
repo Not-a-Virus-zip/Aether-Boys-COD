@@ -5,21 +5,24 @@ from . import (
     edit_menu as em,
     user_interface_impl as ui,
 )
-import dummy_business_logic_api as bl
+from ..backend import (
+    ingredient_list as il_backend
+)
+from ..backend.ingredient_list import Ingredient, ExistingIngredient
 
 class IngredientsList:
-    logic: bl.BusinessLogic
+    backend: il_backend.IngredientList
 
     name: str = "Ingredients"
     frame: ttk.Frame
     ingr_display: ttk.Treeview
-    ingr_list: list[bl.Ingredient]
+    ingr_list: list[ExistingIngredient]
 
     add_button: ttk.Button
     edit_button: ttk.Button
 
-    def __init__(self, parent: tk.Tk | ttk.Frame, logic: bl.BusinessLogic):
-        self.logic = logic
+    def __init__(self, parent: tk.Tk | ttk.Frame):
+        self.backend = il_backend.IngredientList()
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
         list_frame = ttk.Frame(ingredients_frame)
         list_frame.columnconfigure(0, weight=1)
@@ -33,9 +36,9 @@ class IngredientsList:
         ingr_display.column("tag", anchor="e")
         ingr_display.heading("units", text="Units")
         ingr_display.column("units", anchor="e")
-        self.ingr_list = logic.load_ingredient_list()
+        self.ingr_list = self.backend.load_ingredient_list()
         for i, ingr in enumerate(self.ingr_list):
-            ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ui.fmt_qty(ingr.measurement_type)])
+            ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type])# ui.fmt_qty(ingr.measurement_type)])
         scrollbar.grid(row=0, column=1, sticky="ns")
         ingr_display.grid(row=0, column=0, sticky="news")
         list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
@@ -56,7 +59,7 @@ class IngredientsList:
     def is_ingr_selected(self) -> bool:
         return len(self.ingr_display.selection()) != 0
 
-    def get_selected(self) -> bl.Ingredient | None:
+    def get_selected(self) -> ExistingIngredient | None:
         selection = self.ingr_display.selection()
         return None if len(selection) == 0 else self.ingr_list[int(selection[0])]
     
@@ -64,7 +67,7 @@ class IngredientsList:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Create New Ingredient",
-            lambda tl: IngredientEditMenu(self.logic, tl, None).frame
+            lambda tl: IngredientEditMenu(self, tl, None).frame
         )
 
     def press_edit_button(self):
@@ -74,11 +77,11 @@ class IngredientsList:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
-            lambda tl: IngredientEditMenu(self.logic, tl, name).frame
+            lambda tl: IngredientEditMenu(self, tl, name).frame
         )
 
 class IngredientEditMenu(em.EditMenu):
-    logic: bl.BusinessLogic
+    ingr_list: IngredientsList
 
     ingredient_name: em.MenuField[em.Entry]
     tag: em.MenuField[em.DbSearchOptions]
@@ -87,8 +90,8 @@ class IngredientEditMenu(em.EditMenu):
     db_search_display: ttk.Treeview
     db_search_scrollbar: ttk.Scrollbar
 
-    def __init__(self, logic: bl.BusinessLogic, container: tk.Toplevel, ingredient: bl.Ingredient | None) -> None:
-        self.logic = logic
+    def __init__(self, ingr_list: IngredientsList, container: tk.Toplevel, ingredient: ExistingIngredient | None) -> None:
+        self.ingr_list = ingr_list
         if ingredient is not None:
             name = ingredient.name
             tag = ingredient.tag
@@ -116,7 +119,7 @@ class IngredientEditMenu(em.EditMenu):
         self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 2, sticky="ns")
 
     def _search_tags(self, user_input: str) -> list[str]:
-        return self.logic.search_tags(user_input)[:20]
+        return self.ingr_list.backend.search_ingredient_tags(user_input)
 
     def _search_measurements(self, user_input: str) -> list[str]:
-        return [str(val) for val in self.logic.search_units(user_input)[:20]]
+        return [str(val) for val in self.ingr_list.backend.search_ingredient_units(user_input)]

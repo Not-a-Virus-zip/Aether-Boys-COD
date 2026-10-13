@@ -17,7 +17,7 @@ class VirtualPantry:
 
     def update_vpantry_entry(self, updated_ingr: il.ExistingIngredient, new_quant: pint.Quantity):
         """Update the ingredient quantity stored in the virtual pantry, replacing the previous quantity (if one existed)"""
-        db.VirtualPantryQuery.run_update(updated_ingr.id, new_quant.magnitude, str(new_quant.units))
+        db.VirtualPantryQuery.run_update(str(updated_ingr.id), new_quant.magnitude, str(new_quant.units))
 
     def load_virtual_pantry_contents(self) -> list[tuple[il.ExistingIngredient, pint.Quantity]]:
         """Get the current contents of the virtual pantry"""
