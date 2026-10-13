@@ -2,13 +2,16 @@
 import sqlite3 as sql
 from pathlib import Path
 
+# (typing imports)
+from typing import ClassVar
+
 # This code gets the home directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 # This gets the path to the meal planner
 DB_PATH = BASE_DIR / 'data' / 'mymealplanner.db'
 
 # Returns a new connection object to the db
-def get_connection():
+def get_connection() -> sql.Connection:
     try:
         con = sql.connect(DB_PATH)
         con.execute('PRAGMA foreign_keys = ON;')  # Makes sure foreign keys are turned on
@@ -23,12 +26,19 @@ type Tag = str
 
 # The foundation for querying the database
 class SelectDB:
-    select_query = None
-    accepted_filters = None
-    accepted_sorts = None
+    select_query: ClassVar[str]
+    accepted_filters: ClassVar[dict[str, str]]
+    accepted_sorts: ClassVar[dict[str, str]]
 
     @classmethod
-    def run_select(cls, order = None, filter_column = None, filter_value = None, asc = True, exact = False) -> list[tuple]:
+    def run_select(
+            cls,
+            order: str | None = None,
+            filter_column: str | None = None,
+            filter_value: str | None = None,
+            asc: bool = True,
+            exact: bool = False
+    ) -> list[tuple]:
         editable_query = cls.select_query
         if filter_column is not None and filter_value is not None:  # Only activates if a filter column/value is added
             editable_query += 'WHERE '
@@ -39,23 +49,23 @@ class SelectDB:
             # Determines if the user wants an exact or more of a rough match
             if exact:
                 editable_query += '= ? '
-                filter_value = (filter_value,)
+                filter_tuple = (filter_value,)
             else:
                 editable_query += 'LIKE ? '
-                filter_value = (f'%{filter_value}%',)
+                filter_tuple = (f'%{filter_value}%',)
         elif filter_column is None and filter_value is None:
-            filter_value = ()
+            filter_tuple = ()
         else:
             raise ValueError(f'Only one filter was given. Please make sure both are present')
         # Start query not filtered
         editable_query += cls._get_order(order, asc)
         with get_connection() as con:
             cur = con.cursor()
-            rows = cur.execute(editable_query, filter_value)
+            rows = cur.execute(editable_query, filter_tuple)
         return rows.fetchall()
 
     @classmethod
-    def _get_order(cls, order: str, asc: bool) -> str:
+    def _get_order(cls, order: str | None, asc: bool) -> str:
         if order is None:
             order = list(cls.accepted_sorts.keys())[0]
         try:
