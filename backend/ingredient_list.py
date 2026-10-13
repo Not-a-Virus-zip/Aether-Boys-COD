@@ -1,0 +1,3 @@
+
+class IngredientList:
+    pass
