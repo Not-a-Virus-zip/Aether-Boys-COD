@@ -25,7 +25,7 @@ def test_ui():
     app = Application()
 
     global placeholder_image
-    placeholder_image = tk.PhotoImage(file="user_interface/placeholder.png")
+    placeholder_image = tk.PhotoImage(file="src/user_interface/placeholder.png")
     app.run()
 
 class Application:

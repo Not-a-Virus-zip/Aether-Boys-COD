@@ -1,6 +1,9 @@
 import pint
 
-from . import ingredient_list as il
+from . import (
+    ingredient_list as il,
+    units,
+)
 from ..db_scripts import database_logic as db
 
 
@@ -18,5 +21,10 @@ class VirtualPantry:
 
     def load_virtual_pantry_contents(self) -> list[tuple[il.ExistingIngredient, pint.Quantity]]:
         """Get the current contents of the virtual pantry"""
-        for ing_id, name, qty, units in db.VirtualPantryQuery.run_select():
-            il.ExistingIngredient()
+        contents = []
+        for ing_id, name, qty, ing_units in db.VirtualPantryQuery.run_select():
+            ingr = il.ExistingIngredient(name, "", units.get_units(ing_units), ing_id)
+            quantity = qty * ingr.measurement_type
+            contents.append((ingr, quantity))
+        return contents
+
