@@ -1,5 +1,5 @@
 #!/.venv/bin/python
 
-import user_interface
+import src.user_interface as user_interface
 
 user_interface.test_ui()

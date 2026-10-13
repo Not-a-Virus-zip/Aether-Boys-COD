@@ -7,7 +7,6 @@ import pint
 # `@dataclass` automatically generates a constructor using the type annotations
 @dataclass(frozen=True)
 class Ingredient:
-    _ingredient_id: int
     # feel free to add more fields if needed
     name: str
     tag: str
@@ -15,6 +14,17 @@ class Ingredient:
 
     def modify(self, **kwargs) -> Ingredient:
         return dataclasses.replace(self, changes=kwargs)
+
+@dataclass(frozen=True)
+class ExistingIngredient(Ingredient):
+    """An ingredient with an id that currently exists in the database"""
+    # feel free to add more fields if needed
+    id: int
+
+    def modify(self, **kwargs) -> ExistingIngredient:
+        assert "id" not in kwargs, "Cannot modify id of existing ingredient"
+        return dataclasses.replace(self, changes=kwargs)
+
 
 class IngredientList:
     # You can add arguments to the constructor if needed
@@ -26,8 +36,12 @@ class IngredientList:
 
     # TODO: Replace "raise NotImplementedError" with actual implementation
 
-    def update_ingredient(self, updated_ingredient: Ingredient):
-        """Store a modified version of an ingredient, replacing the previous version (if one existed)"""
+    def update_ingredient(self, updated_ingredient: ExistingIngredient):
+        """Store a modified version of an ingredient, replacing the previous version"""
+        raise NotImplementedError
+
+    def create_ingredient(self, new_ingredient: Ingredient):
+        """Create a new ingredient"""
         raise NotImplementedError
 
     def search_ingredient_tags(self, query: str) -> list[str]:
@@ -38,6 +52,6 @@ class IngredientList:
         """Search for possible ingredient units"""
         raise NotImplementedError
 
-    def load_ingredient_list(self) -> list[Ingredient]:
+    def load_ingredient_list(self) -> list[ExistingIngredient]:
         """Get the current ingredient list"""
         raise NotImplementedError

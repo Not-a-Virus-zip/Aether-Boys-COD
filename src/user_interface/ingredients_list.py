@@ -1,11 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
-import itertools
-import pint
 
 from . import (
     edit_menu as em,
-    user_interface_impl as ui
+    user_interface_impl as ui,
 )
 import dummy_business_logic_api as bl
 

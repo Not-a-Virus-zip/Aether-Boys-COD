@@ -9,10 +9,10 @@ class VirtualPantry:
     def __init__(self) -> None:
         raise NotImplementedError
 
-    def update_vpantry_entry(self, updated_ingr: il.Ingredient, new_quant: pint.Quantity):
+    def update_vpantry_entry(self, updated_ingr: il.ExistingIngredient, new_quant: pint.Quantity):
         """Update the ingredient quantity stored in the virtual pantry, replacing the previous quantity (if one existed)"""
         raise NotImplementedError
 
-    def load_virtual_pantry_contents(self) -> list[tuple[il.Ingredient, pint.Quantity]]:
+    def load_virtual_pantry_contents(self) -> list[tuple[il.ExistingIngredient, pint.Quantity]]:
         """Get the current contents of the virtual pantry"""
         raise NotImplementedError

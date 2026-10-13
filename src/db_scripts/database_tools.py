@@ -5,8 +5,10 @@ from pathlib import Path
 # (typing imports)
 from typing import ClassVar
 
-# This code gets the home directory
-BASE_DIR = Path(__file__).resolve().parent.parent
+# This code gets the home directory based on the current file path: "BASE_DIR/src/db_scripts/database_tools.py"
+#          database_tools.py   db_scripts  src  base directory
+#                 vvvv              vvv    vvv    vvv
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # This gets the path to the meal planner
 DB_PATH = BASE_DIR / 'data' / 'mymealplanner.db'
 

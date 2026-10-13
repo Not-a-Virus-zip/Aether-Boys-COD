@@ -9,6 +9,7 @@ from . import (
 )
 import dummy_business_logic_api as bl
 
+
 class VirtualPantry:
     logic: bl.BusinessLogic
     name: str = "Virtual Pantry"
