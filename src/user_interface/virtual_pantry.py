@@ -10,6 +10,7 @@ from . import (
 from ..backend import (
     virtual_pantry as vp_backend,
     ingredient_list as il_backend,
+    units
 )
 from ..backend.ingredient_list import (Ingredient, ExistingIngredient)
 # import dummy_business_logic_api as bl
@@ -76,7 +77,11 @@ class VirtualPantry:
         return None if len(selection) == 0 else self.pantry_contents[int(selection[0])]
 
     def press_add_button(self):
-        print(self.get_selected())
+        em.show_edit_menu(
+            self.frame.winfo_toplevel(),
+            "Add Ingredient",
+            lambda tl: VPantryEditMenu(self, tl, Ingredient("", "", ""), 0 * units.units.dimensionless).frame
+        )
 
     def press_edit_button(self):
         selection = self.get_selected()
@@ -87,8 +92,6 @@ class VirtualPantry:
             "Edit Ingredient",
             lambda tl: VPantryEditMenu(self, tl, name, qty).frame
         )
-
-    
 
 class VPantryEditMenu(em.EditMenu):
     pantry: VirtualPantry
