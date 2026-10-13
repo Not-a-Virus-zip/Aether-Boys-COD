@@ -45,7 +45,7 @@ class IngredientList:
         #    raise ValueError
         # if check_measuretype(updated_ingredient.measurment_type) is None:
         #    raise ValueError
-        iq.run_update(id, name, tag.id, measure_type.id)
+        return iq.run_update(id, name, tag.id, measure_type.id)
 
     def create_ingredient(self, name: str, tag: Tag, measure_type: MeasureType):
         """Create a new ingredient"""
@@ -88,4 +88,4 @@ class TagList:
         if type.capitalize().strip() == 'Meal' or type.capitalize().strip() == 'Ingredient':
             tq.run_insert(name, type)
         else:
-            raise 'type must be \'Ingredient\' or \'Meal\''
+            raise TypeError('type must be \'Ingredient\' or \'Meal\'')

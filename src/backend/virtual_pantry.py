@@ -15,7 +15,7 @@ class VirtualPantry:
     def __init__(self) -> None:
         pass
 
-    def update_vpantry_entry(self, updated_ingr: il.ExistingIngredient | il.Ingredient, new_quant: pint.Quantity):
+    def update_vpantry_entry(self, updated_ingr: il.ExistingIngredient, new_quant: pint.Quantity):
         """Update the ingredient quantity stored in the virtual pantry, replacing the previous quantity (if one existed)"""
         db.VirtualPantryQuery.run_update(str(updated_ingr.id), new_quant.magnitude, str(new_quant.units))
 

@@ -18,6 +18,7 @@ from ..backend.ingredient_list import (Ingredient, ExistingIngredient)
 
 class VirtualPantry:
     backend: vp_backend.VirtualPantry
+    ing_backend: il_backend.IngredientList
     name: str = "Virtual Pantry"
     frame: ttk.Frame
     pantry_display: ttk.Treeview
@@ -25,8 +26,9 @@ class VirtualPantry:
     add_button: ttk.Button
     edit_button: ttk.Button
 
-    def __init__(self, parent: tk.Tk | ttk.Frame):
+    def __init__(self, parent: tk.Tk | ttk.Frame, ing_backend: il_backend.IngredientList):
         self.backend = vp_backend.VirtualPantry()
+        self.ing_backend = ing_backend
         self.frame = vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
         list_frame = ttk.Frame(vp_frame)
         list_frame.columnconfigure(0, weight=1)
@@ -80,7 +82,7 @@ class VirtualPantry:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Add Ingredient",
-            lambda tl: VPantryEditMenu(self, tl, Ingredient("", "", ""), 0 * units.units.dimensionless).frame
+            lambda tl: VPantryAddMenu(self, tl).frame
         )
 
     def press_edit_button(self):
@@ -118,5 +120,49 @@ class VPantryEditMenu(em.EditMenu):
         # TODO: handle this case
         assert self.prev_quantity.is_compatible_with(new_quantity)
         self.pantry.backend.update_vpantry_entry(self.ingredient, new_quantity)
+        self.pantry.refresh_pantry()
+        self.container.destroy()
+
+class VPantryAddMenu(em.EditMenu):
+    pantry: VirtualPantry
+    container: tk.Toplevel
+    ingredient_name: em.MenuField[em.DbSearchOptions]
+    amount: em.MenuField[em.QuantityEntry]
+    save_button: ttk.Button
+    cancel_button: ttk.Button
+
+    last_search: list[ExistingIngredient]
+
+    def __init__(self, pantry: VirtualPantry, container: tk.Toplevel) -> None:
+        super().__init__(container)
+
+        self.db_search_display = ttk.Treeview(self.frame, columns=["display"], show="headings")
+        self.db_search_scrollbar = ttk.Scrollbar(self.frame, command=self.db_search_display.yview)
+        self.db_search_display.config(yscrollcommand=self.db_search_scrollbar.set)
+        self.db_search_display.state(("disabled",))
+
+        self.ingredient_name = self.insert("Ingredient", em.DbSearchOptions(self.frame, self.db_search_display, "", self._search))
+        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, 0 * units.units.dimensionless))
+        self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
+        self.cancel_button.configure(command=container.destroy)
+        self.save_button.configure(command=self.save_and_close)
+        self.pantry = pantry
+        self.container = container
+
+        self.last_search = []
+
+        row_count = self.get_row_count()
+        self.db_search_display.grid(row=1, column=3, rowspan=row_count - 2, sticky="ns")
+        self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 2, sticky="ns")
+
+    def _search(self, query: str) -> list[str]:
+        return [ingr.name for ingr in self.pantry.ing_backend.load_ingredient_list()]
+
+    def save_and_close(self):
+        new_quantity = self.amount.elem.get_quantity()
+        ingredient_name = self.ingredient_name.elem.get_text()
+        # TODO: handle this case
+        assert len(self.last_search) == 1 and self.last_search[0] == ingredient_name
+        self.pantry.backend.update_vpantry_entry(self.last_search[0], new_quantity)
         self.pantry.refresh_pantry()
         self.container.destroy()

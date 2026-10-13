@@ -14,6 +14,9 @@ from . import (
     virtual_pantry as vp,
     ingredients_list as il,
 )
+from ..backend import (
+    ingredient_list as il_backend,
+)
 import dummy_business_logic_api as bl
 
 
@@ -47,7 +50,11 @@ class UserInterface:
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
         alternate_header = ttk.Notebook(root)
-        pantry = vp.VirtualPantry(root)
+
+        tag_backend = il_backend.TagList()
+        ing_backend = il_backend.IngredientList()
+
+        pantry = vp.VirtualPantry(root, ing_backend)
         self.contents = (
             self.pantry,
             self.meals,
@@ -60,7 +67,7 @@ class UserInterface:
             make_meal_catalogue(root),
             make_calendar(root, DayOfTheWeek.Saturday, 30),
             make_shopping_list(root),
-            il.IngredientsList(root, pantry),
+            il.IngredientsList(root, pantry, ing_backend, tag_backend),
             make_settings(root),
         )
 
