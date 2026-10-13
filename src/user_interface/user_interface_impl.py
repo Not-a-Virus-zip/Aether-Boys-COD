@@ -56,7 +56,7 @@ class UserInterface:
             self.ingredients,
             self.settings,
         ) = (
-            vp.VirtualPantry(root, logic),
+            vp.VirtualPantry(root),
             make_meal_catalogue(root),
             make_calendar(root, DayOfTheWeek.Saturday, 30),
             make_shopping_list(root),

@@ -1,7 +1,7 @@
 import dataclasses
 from dataclasses import dataclass
 import pint
-from db_scripts.database_logic import IngredientQuery as iq
+from ..db_scripts.database_logic import IngredientQuery as iq
 
 # Note construct like so:
 #   Ingredient(5, "example name", "example tag", units.kilogram)
@@ -37,7 +37,7 @@ class IngredientList:
 
     # TODO: Replace "raise NotImplementedError" with actual implementation
 
-    def update_ingredient(self, updated_ingredient: Ingredient) -> bool:
+    def update_ingredient(self, updated_ingredient: ExistingIngredient) -> bool:
         """Store a modified version of an ingredient, replacing the previous version (if one existed)"""
         if (iq.run_update(updated_ingredient._ingredient_id, updated_ingredient.name, updated_ingredient.tag)):
             pass
