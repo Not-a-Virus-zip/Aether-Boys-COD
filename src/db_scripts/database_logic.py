@@ -21,7 +21,7 @@ class IngredientQuery(SelectDB):
 
     # Stores new data in the database
     @staticmethod
-    def run_insert(ingredient_name, tag_id, measure_id) -> bool:
+    def run_insert(ingredient_name: str, tag_id: int, measure_id: int) -> bool:
         try:
             with get_connection() as con:
                 cur = con.cursor()
@@ -34,7 +34,7 @@ class IngredientQuery(SelectDB):
 
     # Updates an existing entry
     @staticmethod
-    def run_update(ingredient_id, ingredient_name, tag_id, measure_id):
+    def run_update(ingredient_id: int, ingredient_name: str, tag_id: int, measure_id: int):
         try: 
             with get_connection() as con:
                 cur = con.cursor()
@@ -90,18 +90,28 @@ class VirtualPantryQuery(SelectDB):
             return False
 
 
-class TagDB(SelectDB):
+class TagQuery(SelectDB):
 
     select_query = 'SELECT *' \
-                   'From Tag'
+                   'From Tag '
     accepted_filters = {'name': 'name', 'type': 'tagType', 'id': 'tagID'}
     accepted_sorts = {'name': 'name', 'type': 'tagType', 'date': 'tagID'}
 
+    def run_insert(name: str, tag_type: str):
+        try:
+            with get_connection() as con:
+                cur = con.cursor()
+                cur.execute('INSERT INTO Tag (name, tagType) VALUES (?,?)',
+                            (name,tag_type))
+        except sql.IntegrityError as e:
+            raise f'{e}: Type must be \'Ingredient\' or \'Meal\''
 
-class MeasureTypeDB(SelectDB):
+
+
+class MeasureTypeQuery(SelectDB):
 
         select_query = 'SELECT *' \
-                       'FROM MeasureType'
+                       'FROM MeasureType '
         accepted_filters = {'name': 'name', 'dimension': 'dimension', 'id': 'measureID'}
         accepted_sorts = {'name': 'name', 'dimension': 'dimension', 'date': 'measureID'}
 

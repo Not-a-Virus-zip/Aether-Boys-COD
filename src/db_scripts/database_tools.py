@@ -1,6 +1,8 @@
 # Purpose: Generic methods that all database logic will need
 import sqlite3 as sql
 from pathlib import Path
+from src.db_scripts.database_logic import TagQuery as tq
+from src.db_scripts.database_logic import MeasureTypeQuery as mtq
 
 # (typing imports)
 from typing import ClassVar
@@ -80,3 +82,19 @@ class SelectDB:
         else:
             order_sql += 'DESC '
         return order_sql
+
+
+# def check_tag(tag_name: str) -> int:
+#     """Checks user's Tag to see if the exists in the database"""
+#     found_tag = tq.run_select(filter_column='name', filter_value=tag_name.title().strip(), exact=True)
+#     if not found_tag:
+#         return None
+#     else:
+#         return found_tag[0][0]
+
+# def check_measuretype(mt_name: str) -> int:
+#     found_mt = mtq.run_select(filter_column='name', filter_value=mt_name.title().strip(), exact=True)
+#     if not found_mt:
+#         return None
+#     else:
+#         return found_mt[0][0]

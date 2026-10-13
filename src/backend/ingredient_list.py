@@ -1,7 +1,8 @@
 import dataclasses
 from dataclasses import dataclass
 import pint
-from ..db_scripts.database_logic import IngredientQuery as iq
+from src.db_scripts.database_logic import IngredientQuery as iq
+from src.db_scripts.database_logic import TagQuery as tq
 
 # Note construct like so:
 #   Ingredient(5, "example name", "example tag", units.kilogram)
@@ -39,30 +40,40 @@ class IngredientList:
 
     def update_ingredient(self, updated_ingredient: ExistingIngredient) -> bool:
         """Store a modified version of an ingredient, replacing the previous version (if one existed)"""
-        if (iq.run_update(updated_ingredient._ingredient_id, updated_ingredient.name, updated_ingredient.tag)):
-            pass
-
-    def create_ingredient(self, new_ingredient: Ingredient):
-        """Create a new ingredient"""
         raise NotImplementedError
 
-    def search_ingredient_tags(self, query: str) -> list[str]:
-        """Search for existing ingredient tags"""
-        ing_list = []
-        for ingredient in iq.run_select(filter_column='tag', filter_value=query):
-            ing_list.append(Ingredient(ingredient[0], ingredient[1], ingredient[2], ingredient[3]))
-        return ing_list
+    def create_ingredient(self, name: str, tag: Tag, measure_type: MeasureType):
+        """Create a new ingredient"""
+        iq.run_insert(name, tag.id, measure_type.id)
 
+    # Pulls up a list of available MeasurementTypes(?)
     def search_ingredient_units(self, query: str) -> list[str]:  #TODO: list[pint.Unit] 
         """Search for possible ingredient units"""
-        ing_list = []
-        for ingredient in iq.run_select(filter_column='unit', filter_value=query):
-            ing_list.append(Ingredient(ingredient[0], ingredient[1], ingredient[2], ingredient[3]))
-        return ing_list
+        raise NotImplementedError
 
     def load_ingredient_list(self) -> list[ExistingIngredient]:
         """Get the current ingredient list"""
         ing_list = []
         for ingredient in iq.run_select():
-            ing_list.append(Ingredient(ingredient[0], ingredient[1], ingredient[2], ingredient[3]))
+            ing_list.append(ExistingIngredient(ingredient[0], ingredient[1], ingredient[2], ingredient[3]))
         return ing_list
+
+@dataclass
+class Tag:
+    id: int
+    name: str
+
+class TagList:
+    def load_tag_list(self, type='Ingredient') -> list[Tag]:
+        """Search for existing tags"""
+        tag_list = []
+        for tag in tq.run_select(filter_column='type', filter_value=type.capitalize().strip()):
+            tag_list.append(Tag(tag[0], tag[1]))
+        return tag_list
+    
+    def create_tag(self, name: str, type: str):
+        """Creates a new tag"""
+        if type.capitalize().strip() == 'Meal' or type.capitalize().strip() == 'Ingredient':
+            tq.run_insert(name, type)
+        else:
+            raise 'type must be \'Ingredient\' or \'Meal\''
