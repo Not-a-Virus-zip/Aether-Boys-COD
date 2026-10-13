@@ -36,9 +36,10 @@ class IngredientsList:
         ingr_display.column("tag", anchor="e")
         ingr_display.heading("units", text="Units")
         ingr_display.column("units", anchor="e")
-        self.ingr_list = self.backend.load_ingredient_list()
-        for i, ingr in enumerate(self.ingr_list):
-            ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type])# ui.fmt_qty(ingr.measurement_type)])
+
+        self.ingr_list = []
+        self.refresh_ingredients()
+        
         scrollbar.grid(row=0, column=1, sticky="ns")
         ingr_display.grid(row=0, column=0, sticky="news")
         list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
@@ -55,6 +56,14 @@ class IngredientsList:
             button_weight=1
         )
         bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+
+    def refresh_ingredients(self):
+        if len(self.ingr_list) > 0:
+            self.ingr_display.delete(*range(len(self.ingr_list)))
+        self.ingr_list = self.backend.load_ingredient_list()
+        for i, ingr in enumerate(self.ingr_list):
+            self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type])# ui.fmt_qty(ingr.measurement_type)])
+
 
     def is_ingr_selected(self) -> bool:
         return len(self.ingr_display.selection()) != 0
@@ -73,15 +82,14 @@ class IngredientsList:
     def press_edit_button(self):
         selection = self.get_selected()
         assert selection is not None, "Edit button should be disabled when nothing is selected"
-        name = selection
+        selected_ingredient = selection
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
-            lambda tl: IngredientEditMenu(self, tl, name).frame
+            lambda tl: IngredientEditMenu(self, tl, selected_ingredient).frame
         )
 
 class IngredientEditMenu(em.EditMenu):
-    ingr_list: IngredientsList
 
     ingredient_name: em.MenuField[em.Entry]
     tag: em.MenuField[em.DbSearchOptions]
@@ -89,9 +97,15 @@ class IngredientEditMenu(em.EditMenu):
     ingredient_measurement: em.MenuField[em.DbSearchOptions]
     db_search_display: ttk.Treeview
     db_search_scrollbar: ttk.Scrollbar
+    container: tk.Toplevel
+
+    ingr_list: IngredientsList
+    ingredient: ExistingIngredient | None
 
     def __init__(self, ingr_list: IngredientsList, container: tk.Toplevel, ingredient: ExistingIngredient | None) -> None:
         self.ingr_list = ingr_list
+        self.container = container
+        self.ingredient = ingredient
         if ingredient is not None:
             name = ingredient.name
             tag = ingredient.tag
@@ -114,6 +128,8 @@ class IngredientEditMenu(em.EditMenu):
         self.ingredient_measurement = self.insert("Measurement Type", em.DbSearchOptions(self.frame, self.db_search_display, measure, self._search_measurements, "Measurements"))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
 
+        self.cancel_button.config(command=container.destroy)
+        self.save_button.config(command=self.save_and_close)
         row_count = self.get_row_count()
         self.db_search_display.grid(row=1, column=3, rowspan=row_count - 2, sticky="ns")
         self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 2, sticky="ns")
@@ -123,3 +139,14 @@ class IngredientEditMenu(em.EditMenu):
 
     def _search_measurements(self, user_input: str) -> list[str]:
         return [str(val) for val in self.ingr_list.backend.search_ingredient_units(user_input)]
+
+    def save_and_close(self):
+        new_name = self.ingredient_name.elem.get_text()
+        new_tag = self.tag.elem.get_text()
+        new_msmnt = self.ingredient_measurement.elem.get_text()
+        if self.ingredient is None:
+            self.ingr_list.backend.create_ingredient(Ingredient(new_name, new_tag, new_msmnt))
+        else:
+            self.ingr_list.backend.update_ingredient(self.ingredient.modify(name=new_name, tag=new_tag, measurement_type=new_msmnt))
+        self.ingr_list.refresh_ingredients()
+        self.container.destroy()
