@@ -1,3 +1,4 @@
+# Purpose: Generic methods that all database logic will need
 import sqlite3 as sql
 from pathlib import Path
 
@@ -10,6 +11,7 @@ DB_PATH = BASE_DIR / 'data' / 'mymealplanner.db'
 def get_connection():
     try:
         con = sql.connect(DB_PATH)
+        con.execute('PRAGMA foreign_keys = ON;')  # Makes sure foreign keys are turned on
         return con
     except sql.Error as e:
         print(f'Database connection error: {e}')
@@ -26,15 +28,21 @@ class SelectDB:
     accepted_sorts = None
 
     @classmethod
-    def run_filtered_query(cls, order = None, filter_column = None, filter_value = None, asc = True) -> list[tuple[Name, Tag]]:
+    def run_select(cls, order = None, filter_column = None, filter_value = None, asc = True, exact = False) -> list[tuple]:
         editable_query = cls.select_query
         if filter_column is not None and filter_value is not None:  # Only activates if a filter column/value is added
-            filter_value = (f'%{filter_value}%',)
             editable_query += 'WHERE '
             try:
-                editable_query += f'{cls.accepted_filters[filter_column.lower()]} LIKE ? '  # Checks if filter is good
+                editable_query += f'{cls.accepted_filters[filter_column.lower()]} '  # Checks if filter is good
             except(KeyError):
                 raise ValueError(f'filter_column:{filter_column!r} is not in {list(cls.accepted_filters.keys())}')
+            # Determines if the user wants an exact or more of a rough match
+            if exact:
+                editable_query += '= ? '
+                filter_value = (filter_value,)
+            else:
+                editable_query += 'LIKE ? '
+                filter_value = (f'%{filter_value}%',)
         elif filter_column is None and filter_value is None:
             filter_value = ()
         else:
