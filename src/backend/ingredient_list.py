@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pint
 from src.db_scripts.database_logic import IngredientQuery as iq
 from src.db_scripts.database_logic import TagQuery as tq
+from ..backend.units import MeasureType
 
 # Note construct like so:
 #   Ingredient(5, "example name", "example tag", units.kilogram)
@@ -38,9 +39,13 @@ class IngredientList:
 
     # TODO: Replace "raise NotImplementedError" with actual implementation
 
-    def update_ingredient(self, updated_ingredient: ExistingIngredient) -> bool:
+    def update_ingredient(self, id: int, name: str, tag: Tag, measure_type: MeasureType) -> bool:
         """Store a modified version of an ingredient, replacing the previous version (if one existed)"""
-        raise NotImplementedError
+        # if check_tag(updated_ingredient.tag) is None:
+        #    raise ValueError
+        # if check_measuretype(updated_ingredient.measurment_type) is None:
+        #    raise ValueError
+        iq.run_update(id, name, tag.id, measure_type.id)
 
     def create_ingredient(self, name: str, tag: Tag, measure_type: MeasureType):
         """Create a new ingredient"""
@@ -64,10 +69,17 @@ class Tag:
     name: str
 
 class TagList:
-    def load_tag_list(self, type='Ingredient') -> list[Tag]:
-        """Search for existing tags"""
+    def load_ingredient_tag_list(self) -> list[Tag]:
+        """Search for existing ingredient tags"""
         tag_list = []
-        for tag in tq.run_select(filter_column='type', filter_value=type.capitalize().strip()):
+        for tag in tq.run_select(filter_column='type', filter_value='Ingredient'):
+            tag_list.append(Tag(tag[0], tag[1]))
+        return tag_list
+
+    def load_meal_tag_list(self):
+        """Search for existing meal tags"""
+        tag_list = []
+        for tag in tq.run_select(filter_column='type', filter_value='Meal'):
             tag_list.append(Tag(tag[0], tag[1]))
         return tag_list
     

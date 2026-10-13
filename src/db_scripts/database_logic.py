@@ -97,6 +97,7 @@ class TagQuery(SelectDB):
     accepted_filters = {'name': 'name', 'type': 'tagType', 'id': 'tagID'}
     accepted_sorts = {'name': 'name', 'type': 'tagType', 'date': 'tagID'}
 
+    @staticmethod
     def run_insert(name: str, tag_type: str):
         try:
             with get_connection() as con:

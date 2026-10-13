@@ -1,8 +1,8 @@
 # Purpose: Generic methods that all database logic will need
 import sqlite3 as sql
 from pathlib import Path
-from src.db_scripts.database_logic import TagQuery as tq
-from src.db_scripts.database_logic import MeasureTypeQuery as mtq
+# from src.db_scripts.database_logic import TagQuery as tq
+# from src.db_scripts.database_logic import MeasureTypeQuery as mtq
 
 # (typing imports)
 from typing import ClassVar
