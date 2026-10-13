@@ -4,6 +4,7 @@ from tkinter import ttk
 from . import (
     edit_menu as em,
     user_interface_impl as ui,
+    virtual_pantry as vp,
 )
 from ..backend import (
     ingredient_list as il_backend
@@ -13,6 +14,8 @@ from ..backend.ingredient_list import Ingredient, ExistingIngredient
 class IngredientsList:
     backend: il_backend.IngredientList
 
+    virtual_pantry: vp.VirtualPantry
+
     name: str = "Ingredients"
     frame: ttk.Frame
     ingr_display: ttk.Treeview
@@ -21,8 +24,11 @@ class IngredientsList:
     add_button: ttk.Button
     edit_button: ttk.Button
 
-    def __init__(self, parent: tk.Tk | ttk.Frame):
+    def __init__(self, parent: tk.Tk | ttk.Frame, virtual_pantry: vp.VirtualPantry):
         self.backend = il_backend.IngredientList()
+
+        self.virtual_pantry = virtual_pantry
+
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
         list_frame = ttk.Frame(ingredients_frame)
         list_frame.columnconfigure(0, weight=1)
@@ -65,6 +71,7 @@ class IngredientsList:
         self.ingr_list = self.backend.load_ingredient_list()
         for i, ingr in enumerate(self.ingr_list):
             self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type])# ui.fmt_qty(ingr.measurement_type)])
+        self.virtual_pantry.refresh_pantry()
 
 
     def is_ingr_selected(self) -> bool:
@@ -147,7 +154,7 @@ class IngredientEditMenu(em.EditMenu):
         new_tag = self.tag.elem.get_text()
         new_msmnt = self.ingredient_measurement.elem.get_text()
         if self.ingredient is None:
-            self.ingr_list.backend.create_ingredient(Ingredient(new_name, new_tag, new_msmnt))
+            self.ingr_list.backend.create_ingredient(new_name, new_tag, new_msmnt)
         else:
             self.ingr_list.backend.update_ingredient(self.ingredient.modify(name=new_name, tag=new_tag, measurement_type=new_msmnt))
         self.ingr_list.refresh_ingredients()

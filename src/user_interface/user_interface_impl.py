@@ -46,8 +46,8 @@ class UserInterface:
     def __init__(self, root: tk.Tk, logic: bl.BusinessLogic):
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
-
         alternate_header = ttk.Notebook(root)
+        pantry = vp.VirtualPantry(root)
         self.contents = (
             self.pantry,
             self.meals,
@@ -56,11 +56,11 @@ class UserInterface:
             self.ingredients,
             self.settings,
         ) = (
-            vp.VirtualPantry(root),
+            pantry,
             make_meal_catalogue(root),
             make_calendar(root, DayOfTheWeek.Saturday, 30),
             make_shopping_list(root),
-            il.IngredientsList(root),
+            il.IngredientsList(root, pantry),
             make_settings(root),
         )
 
