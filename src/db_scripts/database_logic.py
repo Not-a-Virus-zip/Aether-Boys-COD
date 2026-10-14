@@ -10,38 +10,36 @@ type Tag = str
 class IngredientQuery(SelectDB):
 
     # Variables needed for SELECT
-    select_query = 'SELECT i.ingredientID, i.name, t.name, mt.name ' \
+    select_query = 'SELECT i.ingredientID, i.name, i.tag, mt.name ' \
                   'FROM Ingredient as i ' \
-                  'LEFT JOIN Tag as t ' \
-                      'ON i.tagID = t.tagID '\
                   'LEFT JOIN MeasureType as mt ' \
                       'ON i.measureID = mt.measureID '
-    accepted_filters = {'ingredient': 'i.name', 'tag': 't.name', 'id': 'i.ingredientID', 'unit': 'mt.name'}
-    accepted_sorts = {'ingredient': 'i.name', 'tag': 't.name', 'date': 'i.ingredientID', 'unit': 'mt.name'}
+    accepted_filters = {'ingredient': 'i.name', 'tag': 'i.tag', 'id': 'i.ingredientID', 'unit': 'mt.name'}
+    accepted_sorts = {'ingredient': 'i.name', 'tag': 'i.name', 'date': 'i.ingredientID', 'unit': 'mt.name'}
 
     # Stores new data in the database
     @staticmethod
-    def run_insert(ingredient_name: str, tag_id: int, measure_id: int) -> bool:
+    def run_insert(ingredient_name: str, tag: str, measure_id: int) -> bool:
         try:
             with get_connection() as con:
                 cur = con.cursor()
                 cur.execute("INSERT INTO Ingredient(name, tagID, measureID) VALUES (?, ?, ?)", 
-                            (ingredient_name, tag_id, measure_id,))
+                            (ingredient_name, tag, measure_id,))
             return True
         except sql.IntegrityError as e:
-            print(f'{e}: There was an ID that is invalid...\nTagID: {tag_id}\nMeasureID: {measure_id}')
+            print(f'{e}: There was an ID that is invalid...\nTagID: {tag}\nMeasureID: {measure_id}')
             return False
 
     # Updates an existing entry
     @staticmethod
-    def run_update(ingredient_id: int, ingredient_name: str, tag_id: int, measure_id: int):
+    def run_update(ingredient_id: int, ingredient_name: str, tag: int, measure_id: int):
         try: 
             with get_connection() as con:
                 cur = con.cursor()
                 cur.execute('UPDATE Ingredient ' \
-                            'SET name = ?, tagID = ?, measureID = ?' \
+                            'SET name = ?, tag = ?, measureID = ?' \
                             'WHERE ingredientID = ?;',
-                            (ingredient_name, tag_id, measure_id, ingredient_id))
+                            (ingredient_name, tag, measure_id, ingredient_id))
             return True
         except sql.IntegrityError as e:
             print(f'{e}: There was an invalid ID given. Please check!')
@@ -90,22 +88,22 @@ class VirtualPantryQuery(SelectDB):
             return False
 
 
-class TagQuery(SelectDB):
+# class TagQuery(SelectDB):
 
-    select_query = 'SELECT *' \
-                   'From Tag '
-    accepted_filters = {'name': 'name', 'type': 'tagType', 'id': 'tagID'}
-    accepted_sorts = {'name': 'name', 'type': 'tagType', 'date': 'tagID'}
+#     select_query = 'SELECT *' \
+#                    'From Tag '
+#     accepted_filters = {'name': 'name', 'type': 'tagType', 'id': 'tagID'}
+#     accepted_sorts = {'name': 'name', 'type': 'tagType', 'date': 'tagID'}
 
-    @staticmethod
-    def run_insert(name: str, tag_type: str):
-        try:
-            with get_connection() as con:
-                cur = con.cursor()
-                cur.execute('INSERT INTO Tag (name, tagType) VALUES (?,?)',
-                            (name,tag_type))
-        except sql.IntegrityError as e:
-            raise TypeError(f'{e}: Type must be \'Ingredient\' or \'Meal\'')
+#     @staticmethod
+#     def run_insert(name: str, tag_type: str):
+#         try:
+#             with get_connection() as con:
+#                 cur = con.cursor()
+#                 cur.execute('INSERT INTO Tag (name, tagType) VALUES (?,?)',
+#                             (name,tag_type))
+#         except sql.IntegrityError as e:
+#             raise f'{e}: Type must be \'Ingredient\' or \'Meal\''
 
 
 
@@ -116,6 +114,3 @@ class MeasureTypeQuery(SelectDB):
         accepted_filters = {'name': 'name', 'dimension': 'dimension', 'id': 'measureID'}
         accepted_sorts = {'name': 'name', 'dimension': 'dimension', 'date': 'measureID'}
 
-
-
-# TODO: Add a class for tag and measure type. Both only need selects
