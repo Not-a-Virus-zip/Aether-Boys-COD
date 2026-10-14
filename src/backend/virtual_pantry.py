@@ -11,7 +11,7 @@ def into_measure_type_id(unit) -> int:
     unit_name = str(unit)
     if unit_name == "dimensionless":
         unit_name = "piece" # TODO: Replace this stuff with better implementation
-    results = db.MeasureTypeQuery.run_select(filter_column="name", filter_value=unit_name)
+    results = db.MeasureTypeQuery.run_select(filter_column="name", filter_value=unit_name, exact=True)
     if not results: raise ValueError("no unit found")
     print(f"{results = }")
     return int(results[0][0])
@@ -20,7 +20,7 @@ def into_measure_type(unit) -> units.MeasureType:
     unit_name = str(unit)
     if unit_name == "dimensionless":
         unit_name = "piece" # TODO: Replace this stuff with better implementation
-    results = db.MeasureTypeQuery.run_select(filter_column="name", filter_value=unit_name)
+    results = db.MeasureTypeQuery.run_select(filter_column="name", filter_value=unit_name, exact=True)
     if not results: raise ValueError("no unit found")
     print(f"{results = }")
     return units.MeasureType(int(results[0][0]), str(results[0][1]))
