@@ -45,6 +45,16 @@ class IngredientQuery(SelectDB):
             print(f'{e}: There was an invalid ID given. Please check!')
             return False
 
+    def run_get_tags():
+        with get_connection() as con:
+            cur = con.cursor()
+            tag_list =  con.execute('SELECT tag, COUNT(*) AS ingredient_count ' \
+                                    'FROM Ingredient ' \
+                                    'WHERE tag IS NOT NULL AND tag <> ' \
+                                    'GROUP BY tag ' \
+                                    'ORDER BY tag;')
+            return tag_list.fetchall()
+
 
 # This class covers all requests that the Virtual Pantry screen will make
 class VirtualPantryQuery(SelectDB):
