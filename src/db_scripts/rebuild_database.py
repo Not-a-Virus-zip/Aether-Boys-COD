@@ -22,9 +22,9 @@ def _rebuild_database():
                 with open(SCRIPT_PATH/file) as sql_file:
                     script = sql_file.read()
                 cur.executescript(script)
-        except sqlite3.Error as e:
-            con.rollback
-            raise f'{e}'
+        except sqlite3.Error:
+            con.rollback()
+            raise
     print('Rollback finished!')
 
 if __name__ == '__main__':

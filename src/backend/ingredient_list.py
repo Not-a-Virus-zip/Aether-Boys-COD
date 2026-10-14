@@ -1,8 +1,8 @@
 import dataclasses
 from dataclasses import dataclass
 import pint
-from src.db_scripts.database_logic import IngredientQuery as iq
-from ..backend.units import MeasureType
+from ..db_scripts.database_logic import (IngredientQuery as iq, MeasureTypeQuery as mq)
+from .units import MeasureType
 
 # Note construct like so:
 #   Ingredient(5, "example name", "example tag", units.kilogram)
@@ -12,10 +12,10 @@ class Ingredient:
     # feel free to add more fields if needed
     name: str
     tag: str
-    measurement_type: str  # pint.Unit - Right now the MeasurementType database doesn't use Pint. Will change after demo
+    measurement_type: MeasureType  # pint.Unit - Right now the MeasurementType database doesn't use Pint. Will change after demo
 
     def modify(self, **kwargs) -> Ingredient:
-        return dataclasses.replace(self, changes=kwargs)
+        return dataclasses.replace(self, **kwargs)
 
 @dataclass(frozen=True)
 class ExistingIngredient(Ingredient):
@@ -25,7 +25,7 @@ class ExistingIngredient(Ingredient):
 
     def modify(self, **kwargs) -> ExistingIngredient:
         assert "id" not in kwargs, "Cannot modify id of existing ingredient"
-        return dataclasses.replace(self, changes=kwargs)
+        return dataclasses.replace(self, **kwargs)
 
 
 class IngredientList:
@@ -38,22 +38,22 @@ class IngredientList:
 
     # TODO: Replace "raise NotImplementedError" with actual implementation
 
-    def update_ingredient(self, id: int, name: str, tag: str, measure_type: MeasureType) -> bool:
-        """Store a modified version of an ingredient, replacing the previous version (if one existed)"""
+    def update_ingredient(self, modified: ExistingIngredient) -> bool:
+        """Store a modified version of an ingredient, replacing the previous version"""
         # if check_tag(updated_ingredient.tag) is None:
         #    raise ValueError
         # if check_measuretype(updated_ingredient.measurment_type) is None:
         #    raise ValueError
-        return iq.run_update(id, name, tag, measure_type.id)
+        return iq.run_update(modified.id, modified.name, modified.tag, modified.measurement_type.id)
 
-    def create_ingredient(self, name: str, tag: str, measure_type: MeasureType):
+    def create_ingredient(self, name: str, tag: str, measure_type: int):
         """Create a new ingredient"""
-        iq.run_insert(name, tag, measure_type.id)
+        iq.run_insert(name, tag, measure_type)
 
     # Pulls up a list of available MeasurementTypes(?)
     def search_ingredient_units(self, query: str) -> list[str]:  #TODO: list[pint.Unit] 
         """Search for possible ingredient units"""
-        raise NotImplementedError
+        return [str(name) for _, name, *_ in mq.run_select(filter_column="name", filter_value=query)]
 
     def load_ingredient_list(self, 
                              filter_column: str | None = None, 
@@ -65,12 +65,9 @@ class IngredientList:
             ing_list.append(ExistingIngredient(name, tag, measure, id))
         return ing_list
 
-    def tags_in_use(self, query):
+    def tags_in_use(self, query: str):
         """Get a list of unique tags in use"""
-        tag_list = []
-        for tag in iq.run_get_tags():
-            tag_list.append(tag[0])
-        return tag_list
+        return [tag for tag, in iq.run_get_tags(query or None)]
 
 
 # Removed for hello world project

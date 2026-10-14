@@ -7,7 +7,8 @@ from . import (
     virtual_pantry as vp,
 )
 from ..backend import (
-    ingredient_list as il_backend
+    ingredient_list as il_backend,
+    virtual_pantry as vp_backend,
 )
 from ..backend.ingredient_list import Ingredient, ExistingIngredient
 
@@ -149,7 +150,7 @@ class IngredientEditMenu(em.EditMenu):
 
     def _search_tags(self, user_input: str) -> list[str]:
         self.tag_search_results = self.ingr_list.backend.tags_in_use(user_input)
-        return [tag.name for tag in self.tag_search_results]
+        return self.tag_search_results
 
     def _search_measurements(self, user_input: str) -> list[str]:
         return self.ingr_list.backend.search_ingredient_units(user_input)
@@ -158,10 +159,14 @@ class IngredientEditMenu(em.EditMenu):
         new_name = self.ingredient_name.elem.get_text()
         new_tag: str = self.tag.elem.get_text()
         new_msmnt = self.ingredient_measurement.elem.get_text()
-
+        try:
+            new_msmnt = vp_backend.into_measure_type(new_msmnt)
+        except ValueError:
+            print("Unknown Ingredient") # TODO: Proper error messages
+            return
         if self.ingredient is None:
-            self.ingr_list.backend.create_ingredient(new_name, new_tag, new_msmnt)
+            self.ingr_list.backend.create_ingredient(new_name, new_tag, new_msmnt.id)
         else:
-            self.ingr_list.backend.update_ingredient(self.ingredient.id, new_name,  new_tag, new_msmnt)
+            self.ingr_list.backend.update_ingredient(self.ingredient.modify(name=new_name, tag=new_tag, measurement_type=new_msmnt))
         self.ingr_list.refresh_ingredients()
         self.container.destroy()

@@ -179,7 +179,7 @@ class DbSearchOptions[T](SharedData):
         self.search_bar.insert(tk.END, initial_value)
         self.text_var.trace_add("write", self._on_text_update)
         self.search_bar.bind("<FocusIn>", self._on_focus)
-        self.update_on_text_changes = False
+        self.update_on_text_changes = True
 
     def insert(self, row: int, column: int):
         self.search_bar.grid(row=row, column=column, sticky="nw")

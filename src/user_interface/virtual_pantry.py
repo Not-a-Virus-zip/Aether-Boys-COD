@@ -117,7 +117,7 @@ class VPantryEditMenu(em.EditMenu):
     def save_and_close(self):
         new_quantity = self.amount.elem.get_quantity()
         # TODO: handle this case
-        assert self.prev_quantity.is_compatible_with(new_quantity)
+        # assert self.prev_quantity.is_compatible_with(new_quantity)
         self.pantry.backend.update_vpantry_entry(self.ingredient, new_quantity)
         self.pantry.refresh_pantry()
         self.container.destroy()
@@ -134,7 +134,6 @@ class VPantryAddMenu(em.EditMenu):
 
     def __init__(self, pantry: VirtualPantry, container: tk.Toplevel) -> None:
         super().__init__(container)
-
         self.db_search_display = ttk.Treeview(self.frame, columns=["display"], show="headings")
         self.db_search_scrollbar = ttk.Scrollbar(self.frame, command=self.db_search_display.yview)
         self.db_search_display.config(yscrollcommand=self.db_search_scrollbar.set)
@@ -162,6 +161,6 @@ class VPantryAddMenu(em.EditMenu):
         ingredient = self.ingredient_name.elem.get_selection()
         # TODO: handle this case
         assert ingredient is not None
-        self.pantry.backend.update_vpantry_entry(ingredient, new_quantity)
+        self.pantry.backend.add_vpantry_entry(ingredient, new_quantity)
         self.pantry.refresh_pantry()
         self.container.destroy()

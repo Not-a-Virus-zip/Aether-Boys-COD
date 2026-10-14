@@ -23,7 +23,7 @@ class IngredientQuery(SelectDB):
         try:
             with get_connection() as con:
                 cur = con.cursor()
-                cur.execute("INSERT INTO Ingredient(name, tagID, measureID) VALUES (?, ?, ?)", 
+                cur.execute("INSERT INTO Ingredient(name, tag, measureID) VALUES (?, ?, ?)", 
                             (ingredient_name, tag, measure_id,))
             return True
         except sql.IntegrityError as e:
@@ -32,7 +32,7 @@ class IngredientQuery(SelectDB):
 
     # Updates an existing entry
     @staticmethod
-    def run_update(ingredient_id: int, ingredient_name: str, tag: int, measure_id: int):
+    def run_update(ingredient_id: int, ingredient_name: str, tag: str, measure_id: int):
         try: 
             with get_connection() as con:
                 cur = con.cursor()
@@ -46,7 +46,7 @@ class IngredientQuery(SelectDB):
             return False
 
     @staticmethod
-    def run_get_tags(filter_value: str | None = None):
+    def run_get_tags(filter_value: str | None = None) -> list[tuple[str]]:
         query = ('SELECT DISTINCT tag '
                 'FROM Ingredient '
                 "WHERE tag IS NOT NULL AND TRIM(tag) <> '' ")
@@ -76,7 +76,7 @@ class VirtualPantryQuery(SelectDB):
 
     # Stores new data in the database
     @staticmethod
-    def run_insert(ingredient_id: str, qty_owned: int, measure_id: str) -> bool:
+    def run_insert(ingredient_id: str, qty_owned: float, measure_id: str) -> bool:
         try:
             with get_connection() as con:
                 cur = con.cursor()
@@ -97,9 +97,10 @@ class VirtualPantryQuery(SelectDB):
                             'SET qtyHave = ?, measureID = ? ' \
                             'WHERE ingredientID = ?;',
                             (qty, measure_id, ingredient_id))
+                print(f"Adding {ingredient_id} {qty} {measure_id}")
             return True
         except sql.IntegrityError as e:
-            print(f'{e}: There was an invalid ID given. Please check!')
+            print(f'{e}: There was an invalid ID given for measure {measure_id!r}. Please check!')
             return False
 
 
