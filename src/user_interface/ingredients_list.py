@@ -107,7 +107,7 @@ class IngredientsList:
 class IngredientEditMenu(em.EditMenu):
 
     ingredient_name: em.MenuField[em.Entry]
-    tag: em.MenuField[em.DbSearchOptions]
+    tag: em.MenuField[em.DbSearchOptions[str]]
     # fdcid: em.MenuField[em.Display]
     ingredient_measurement: em.MenuField[em.DbSearchOptions]
     db_search_display: ttk.Treeview
@@ -141,16 +141,16 @@ class IngredientEditMenu(em.EditMenu):
         self.db_search_display.state(("disabled",))
 
         self.ingredient_name        = self.insert("Ingredient Name", em.Entry(self.frame, name))
-        self.tag                    = self.insert("Tag", em.DbSearchOptions(self.frame, self.db_search_display, tag, self._search_tags, "Tags"))
+        self.tag                    = self.insert("Tag", em.DbSearchOptions(self.frame, self.db_search_display, tag, self._search_tags, lambda t: t, "Tags"))
         # self.fdcid                  = self.insert("FDC ID", em.Display(self.frame, fdcid))
-        self.ingredient_measurement = self.insert("Measurement Type", em.DbSearchOptions(self.frame, self.db_search_display, measure, self._search_measurements, "Measurements"))
+        self.ingredient_measurement = self.insert("Measurement Type", em.DbSearchOptions(self.frame, self.db_search_display, measure, self._search_measurements, lambda t: t, "Measurements"))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
 
         self.cancel_button.config(command=container.destroy)
         self.save_button.config(command=self.save_and_close)
         row_count = self.get_row_count()
-        self.db_search_display.grid(row=1, column=3, rowspan=row_count - 2, sticky="ns")
-        self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 2, sticky="ns")
+        self.db_search_display.grid(row=1, column=3, rowspan=row_count - 3, sticky="ns")
+        self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 3, sticky="ns")
 
     def _search_tags(self, user_input: str) -> list[str]:
         self.tag_search_results = self.ingr_list.tag_backend.load_ingredient_tag_list() # (user_input)

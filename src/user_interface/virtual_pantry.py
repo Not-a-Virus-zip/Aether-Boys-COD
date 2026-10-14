@@ -125,7 +125,7 @@ class VPantryEditMenu(em.EditMenu):
 class VPantryAddMenu(em.EditMenu):
     pantry: VirtualPantry
     container: tk.Toplevel
-    ingredient_name: em.MenuField[em.DbSearchOptions]
+    ingredient_name: em.MenuField[em.DbSearchOptions[ExistingIngredient]]
     amount: em.MenuField[em.QuantityEntry]
     save_button: ttk.Button
     cancel_button: ttk.Button
@@ -140,7 +140,7 @@ class VPantryAddMenu(em.EditMenu):
         self.db_search_display.config(yscrollcommand=self.db_search_scrollbar.set)
         self.db_search_display.state(("disabled",))
 
-        self.ingredient_name = self.insert("Ingredient", em.DbSearchOptions(self.frame, self.db_search_display, "", self._search))
+        self.ingredient_name = self.insert("Ingredient", em.DbSearchOptions(self.frame, self.db_search_display, "", self._search, lambda i: i.name))
         self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, 0 * units.units.dimensionless))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
         self.cancel_button.configure(command=container.destroy)
@@ -151,11 +151,11 @@ class VPantryAddMenu(em.EditMenu):
         self.last_search = []
 
         row_count = self.get_row_count()
-        self.db_search_display.grid(row=1, column=3, rowspan=row_count - 2, sticky="ns")
-        self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 2, sticky="ns")
+        self.db_search_display.grid(row=1, column=3, rowspan=row_count - 3, sticky="ns")
+        self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 3, sticky="ns")
 
-    def _search(self, query: str) -> list[str]:
-        return [ingr.name for ingr in self.pantry.ing_backend.load_ingredient_list()]
+    def _search(self, query: str) -> list[ExistingIngredient]:
+        return self.pantry.ing_backend.load_ingredient_list()
 
     def save_and_close(self):
         new_quantity = self.amount.elem.get_quantity()

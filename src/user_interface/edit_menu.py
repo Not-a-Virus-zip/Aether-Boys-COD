@@ -40,12 +40,14 @@ class EditMenu:
         return menu_field
 
     def finish_construction(self, bottom_buttons: Iterable[tuple[str, Callable[[], None]] | str | int]) -> list[ttk.Button]:
-        in_between_row = self.next_row
-        bottom_buttons_row = self.next_row + 1
-        self.next_row += 2
-        self.frame.rowconfigure(in_between_row, weight=1, minsize=10)
+        finish_row = self.next_row
+        in_between_row = self.next_row + 1
+        bottom_buttons_row = self.next_row + 2
+        self.next_row += 3
+        self.frame.rowconfigure(finish_row, weight=1)
+        self.frame.rowconfigure(in_between_row, minsize=10)
         bottom_buttons_frame, buttons = ui.make_buttons(self.frame, bottom_buttons)
-        bottom_buttons_frame.grid(column=0, row=bottom_buttons_row, columnspan=3, sticky="ew")
+        bottom_buttons_frame.grid(column=0, row=bottom_buttons_row, columnspan=4, sticky="ew")
         return buttons
 
     def get_row_count(self) -> int:
@@ -153,21 +155,25 @@ class QuantityEntry(SharedData):
 class FixedOptions(SharedData):
     def __init__(self, container: ttk.Frame): pass
 
-class DbSearchOptions(SharedData):
+class DbSearchOptions[T](SharedData):
     search_bar: ttk.Entry
     text_var: tk.StringVar
     side_bar_ref: ttk.Treeview
-    search_fn: Callable[[str], list[str]]
+    search_fn: Callable[[str], list[T]]
+    translation_fn: Callable[[T], str]
     display_header: str
-    entries: list[str]
+    entries: list[T]
+    selected: T | None
 
-    def __init__(self, container: ttk.Frame, side_bar: ttk.Treeview, initial_value: str, db_search: Callable[[str], list[str]], display_header: str = "Options"):
+    def __init__(self, container: ttk.Frame, side_bar: ttk.Treeview, initial_value: str, db_search: Callable[[str], list[T]], translation_fn: Callable[[T], str], display_header: str = "Options"):
         self.search_bar = ttk.Entry(container)
         self.text_var = tk.StringVar(self.search_bar)
         self.side_bar_ref = side_bar
         self.search_fn = db_search
+        self.translation_fn = translation_fn
         self.display_header = display_header
         self.entries = []
+        self.selected = None
 
         self.search_bar.config(textvariable=self.text_var)
         self.search_bar.insert(tk.END, initial_value)
@@ -181,8 +187,11 @@ class DbSearchOptions(SharedData):
     def set_text(self, text: str):
         self.text_var.set(text)
 
-    def get_text(self):
+    def get_text(self) -> str:
         return self.text_var.get()
+
+    def get_selection(self) -> T | None:
+        return self.selected
 
     def show_search_results_in_side_bar(self):
         self.side_bar_ref.state(("!disabled",))
@@ -197,15 +206,16 @@ class DbSearchOptions(SharedData):
             self.side_bar_ref.column("display", anchor=tk.W)
             self.side_bar_ref.config(selectmode=tk.BROWSE)
             for i, entry in enumerate(self.entries):
-                self.side_bar_ref.insert("", "end", id=i, text="", values=[entry])
+                self.side_bar_ref.insert("", "end", id=i, text="", values=[self.translation_fn(entry)])
         self.side_bar_ref.heading("display", text=self.display_header)
 
     def _on_select_search_results(self, event: tk.Event):
         selected = self.side_bar_ref.selection()
         if len(selected) >= 1:
             selected_index = int(selected[0])
+            self.selected = self.entries[selected_index]
             self.update_on_text_changes = False
-            self.set_text(self.entries[selected_index])
+            self.set_text(self.translation_fn(self.selected))
             self.update_on_text_changes = True
 
     def _on_focus(self, event: tk.Event):
@@ -214,6 +224,7 @@ class DbSearchOptions(SharedData):
     def _on_text_update(self, *_):
         if self.update_on_text_changes:
             self.show_search_results_in_side_bar()
+            self.selected = None
 
 class Image(SharedData):
     def __init__(self, container: ttk.Frame): pass
