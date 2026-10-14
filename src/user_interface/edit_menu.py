@@ -5,8 +5,9 @@ import tkinter as tk
 from typing import Callable, Iterable
 import pint
 
-import dummy_business_logic_api as bl
 from . import user_interface_impl as ui
+
+from ..backend.units import units
 
 def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
     edit_menu = tk.Toplevel(root)
@@ -145,7 +146,7 @@ class QuantityEntry(SharedData):
         return self.input_field.get()
 
     def get_quantity(self) -> pint.Quantity:
-        parsed = bl.units.parse_expression(self.get_text())
+        parsed = units.parse_expression(self.get_text())
         return parsed
 
 
@@ -172,6 +173,7 @@ class DbSearchOptions(SharedData):
         self.search_bar.insert(tk.END, initial_value)
         self.text_var.trace_add("write", self._on_text_update)
         self.search_bar.bind("<FocusIn>", self._on_focus)
+        self.update_on_text_changes = False
 
     def insert(self, row: int, column: int):
         self.search_bar.grid(row=row, column=column, sticky="nw")
@@ -202,13 +204,16 @@ class DbSearchOptions(SharedData):
         selected = self.side_bar_ref.selection()
         if len(selected) >= 1:
             selected_index = int(selected[0])
+            self.update_on_text_changes = False
             self.set_text(self.entries[selected_index])
+            self.update_on_text_changes = True
 
     def _on_focus(self, event: tk.Event):
         self.show_search_results_in_side_bar()
 
     def _on_text_update(self, *_):
-        self.show_search_results_in_side_bar()
+        if self.update_on_text_changes:
+            self.show_search_results_in_side_bar()
 
 class Image(SharedData):
     def __init__(self, container: ttk.Frame): pass

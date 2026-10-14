@@ -17,7 +17,6 @@ from . import (
 from ..backend import (
     ingredient_list as il_backend,
 )
-import dummy_business_logic_api as bl
 
 
 
@@ -39,14 +38,13 @@ class Application:
         self.root = tk.Tk()
         self.root.wm_title("Meal Planner")
         self.root.geometry("550x400")
-        self.logic = bl.BusinessLogic()
-        self.interface = UserInterface(self.root, self.logic)
+        self.interface = UserInterface(self.root)
 
     def run(self):
         self.root.mainloop()
 
 class UserInterface:
-    def __init__(self, root: tk.Tk, logic: bl.BusinessLogic):
+    def __init__(self, root: tk.Tk):
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
         alternate_header = ttk.Notebook(root)
