@@ -65,9 +65,13 @@ class IngredientList:
             ing_list.append(ExistingIngredient(name, tag, measure, id))
         return ing_list
 
-    def tags_in_use(self):
+    def tags_in_use(self, query):
         """Get a list of unique tags in use"""
-        return iq.run_get_tags()
+        tag_list = []
+        for tag in iq.run_get_tags():
+            tag_list.append(tag[0])
+        return tag_list
+
 
 # Removed for hello world project
 # @dataclass

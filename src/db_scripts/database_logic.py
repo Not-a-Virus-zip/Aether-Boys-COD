@@ -45,15 +45,20 @@ class IngredientQuery(SelectDB):
             print(f'{e}: There was an invalid ID given. Please check!')
             return False
 
-    def run_get_tags():
+    @staticmethod
+    def run_get_tags(filter_value: str | None = None):
+        query = ('SELECT DISTINCT tag '
+                'FROM Ingredient '
+                "WHERE tag IS NOT NULL AND TRIM(tag) <> '' ")
+        filter_tuple = ()
+
+        if filter_value is not None:
+            query += 'AND tag LIKE ? '
+            filter_tuple = (f'%{filter_value}%',)
+        query += 'ORDER BY tag;'
+
         with get_connection() as con:
-            cur = con.cursor()
-            tag_list =  con.execute('SELECT tag, COUNT(*) AS ingredient_count ' \
-                                    'FROM Ingredient ' \
-                                    'WHERE tag IS NOT NULL AND tag <> ' \
-                                    'GROUP BY tag ' \
-                                    'ORDER BY tag;')
-            return tag_list.fetchall()
+            return con.execute(query, filter_tuple).fetchall()
 
 
 # This class covers all requests that the Virtual Pantry screen will make
