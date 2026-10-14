@@ -148,7 +148,7 @@ class IngredientEditMenu(em.EditMenu):
         self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 3, sticky="ns")
 
     def _search_tags(self, user_input: str) -> list[str]:
-        self.tag_search_results = self.ingr_list.backend.search_ingredient_tags(user_input)
+        self.tag_search_results = self.ingr_list.backend.tags_in_use(user_input)
         return [tag.name for tag in self.tag_search_results]
 
     def _search_measurements(self, user_input: str) -> list[str]:

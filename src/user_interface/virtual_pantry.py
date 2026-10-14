@@ -159,9 +159,9 @@ class VPantryAddMenu(em.EditMenu):
 
     def save_and_close(self):
         new_quantity = self.amount.elem.get_quantity()
-        ingredient_name = self.ingredient_name.elem.get_text()
+        ingredient = self.ingredient_name.elem.get_selection()
         # TODO: handle this case
-        assert len(self.last_search) == 1 and self.last_search[0] == ingredient_name
-        self.pantry.backend.update_vpantry_entry(self.last_search[0], new_quantity)
+        assert ingredient is not None
+        self.pantry.backend.update_vpantry_entry(ingredient, new_quantity)
         self.pantry.refresh_pantry()
         self.container.destroy()
