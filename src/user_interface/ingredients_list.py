@@ -65,7 +65,9 @@ class IngredientsList:
             ),
             button_weight=1
         )
+        self.edit_button.config(state=tk.DISABLED)
         bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+        ingr_display.bind("<<TreeviewSelect>>", self.on_selection_change)
 
     def refresh_ingredients(self):
         if len(self.ingr_list) > 0:
@@ -75,6 +77,8 @@ class IngredientsList:
             self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type])# ui.fmt_qty(ingr.measurement_type)])
         self.virtual_pantry.refresh_pantry()
 
+    def on_selection_change(self, tv: tk.Event) -> object:
+        self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
 
     def is_ingr_selected(self) -> bool:
         return len(self.ingr_display.selection()) != 0
