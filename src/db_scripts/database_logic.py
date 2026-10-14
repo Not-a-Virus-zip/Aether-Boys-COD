@@ -105,7 +105,7 @@ class TagQuery(SelectDB):
                 cur.execute('INSERT INTO Tag (name, tagType) VALUES (?,?)',
                             (name,tag_type))
         except sql.IntegrityError as e:
-            raise f'{e}: Type must be \'Ingredient\' or \'Meal\''
+            raise TypeError(f'{e}: Type must be \'Ingredient\' or \'Meal\'')
 
 
 

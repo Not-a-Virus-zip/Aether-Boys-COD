@@ -59,8 +59,8 @@ class IngredientList:
     def load_ingredient_list(self) -> list[ExistingIngredient]:
         """Get the current ingredient list"""
         ing_list = []
-        for ingredient in iq.run_select():
-            ing_list.append(ExistingIngredient(ingredient[0], ingredient[1], ingredient[2], ingredient[3]))
+        for id, name, tag, measure in iq.run_select():
+            ing_list.append(ExistingIngredient(name, tag, measure, id))
         return ing_list
 
 @dataclass
