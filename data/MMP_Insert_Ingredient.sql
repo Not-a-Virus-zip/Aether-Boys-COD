@@ -1,6 +1,8 @@
 -- Seed data for Ingredient
--- Run AFTER MMP Create Tables.sql, MMP_Insert_MeasureType.sql, and MMP_Insert_Tag.sql
--- Tags and units are looked up by name, so this doesn't depend on ID numbers.
+-- Run AFTER MMP_Create_Tables.sql and MMP_Insert_MeasureType.sql
+-- Units are looked up by name, so this doesn't depend on ID numbers.
+-- The ingredient category (tagName below) is stored as plain text in Ingredient.tag;
+-- it no longer refers to a table, so MealTag does not need to be loaded first.
 -- fdcID is left NULL (to be filled in from the USDA FoodData Central API).
 
 WITH src(name, tagName, unitName) AS (VALUES
@@ -117,8 +119,7 @@ WITH src(name, tagName, unitName) AS (VALUES
     -- Snacks
     ('tortilla chips',      'Snacks', 'ounce')
 )
-INSERT INTO Ingredient (name, tagID, measureID)
-SELECT s.name, t.tagID, m.measureID
+INSERT INTO Ingredient (name, tag, measureID)
+SELECT s.name, s.tagName, m.measureID
 FROM src AS s
-LEFT JOIN Tag AS t         ON t.name = s.tagName AND t.tagType = 'Ingredient'
 LEFT JOIN MeasureType AS m ON m.name = s.unitName;
