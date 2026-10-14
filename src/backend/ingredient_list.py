@@ -55,10 +55,13 @@ class IngredientList:
         """Search for possible ingredient units"""
         raise NotImplementedError
 
-    def load_ingredient_list(self) -> list[ExistingIngredient]:
+    def load_ingredient_list(self, 
+                             filter_column: str | None = None, 
+                             filter_value: str | None = None
+                             ) -> list[ExistingIngredient]:
         """Get the current ingredient list"""
         ing_list = []
-        for id, name, tag, measure in iq.run_select():
+        for id, name, tag, measure in iq.run_select(filter_column=filter_column, filter_value=filter_value):
             ing_list.append(ExistingIngredient(name, tag, measure, id))
         return ing_list
 
