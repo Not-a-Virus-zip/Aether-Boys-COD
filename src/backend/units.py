@@ -1,3 +1,4 @@
+from __future__ import annotations
 import pint
 from dataclasses import dataclass
 from ..db_scripts.database_logic import MeasureTypeQuery as mtq

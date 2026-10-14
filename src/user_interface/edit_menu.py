@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from tkinter import ttk
 from tkinter import scrolledtext as scrtxt
