@@ -26,9 +26,10 @@ class MenuField[T]:
     elem: T
 
 class EditMenu:
+    frame: ttk.Frame
+
     def __init__(self, parent: tk.Toplevel) -> None:
         self.frame = ttk.Frame(parent, padding=10)
-        # self.frame.columnconfigure(2, weight=1)
         self.frame.columnconfigure(1, minsize=10)
         self.next_row = 1
 
@@ -48,11 +49,66 @@ class EditMenu:
         self.frame.rowconfigure(finish_row, weight=1)
         self.frame.rowconfigure(in_between_row, minsize=10)
         bottom_buttons_frame, buttons = ui.make_buttons(self.frame, bottom_buttons)
-        bottom_buttons_frame.grid(column=0, row=bottom_buttons_row, columnspan=4, sticky="ew")
+        bottom_buttons_frame.grid(column=0, row=bottom_buttons_row, columnspan=5, sticky="ew")
         return buttons
 
     def get_row_count(self) -> int:
         return self.next_row
+
+class EditMenuWithSearcher(EditMenu):
+    search_display: ttk.Treeview
+    active_searcher: Searcher | None
+
+    def __init__(self, parent: tk.Toplevel) -> None:
+        super().__init__(parent)
+        self.frame.columnconfigure(3, minsize=10)
+        self.search_display = ttk.Treeview(self.frame, columns=["display"], show="headings")
+        self.db_search_scrollbar = ttk.Scrollbar(self.frame, command=self.search_display.yview)
+        self.search_display.config(yscrollcommand=self.db_search_scrollbar.set)
+        self.search_display.state(("disabled",))
+
+        self.search_display.bind("<<TreeviewSelect>>", self._on_select_search_result)
+
+    def finish_construction(self, bottom_buttons: Iterable[tuple[str, Callable[[], None]] | str | int]) -> list[ttk.Button]:
+        buttons = super().finish_construction(bottom_buttons)
+        row_count = self.get_row_count()
+        self.search_display.grid(row=1, column=4, rowspan=row_count - 3, sticky="ns")
+        self.db_search_scrollbar.grid(row=1, column=5, rowspan=row_count - 3, sticky="ns")
+        return buttons
+
+    def _on_select_search_result(self, event: tk.Event):
+        selected = self.search_display.selection()
+        if len(selected) >= 1:
+            assert self.active_searcher is not None
+            selected_index = int(selected[0])
+            self.active_searcher.notify_about_selection(selected_index)
+
+    def insert_searcher[T: Searcher](self, name: str, elem: T) -> MenuField[T]:
+        field_label = ttk.Label(self.frame, text=name)
+        field_label.grid(row=self.next_row, column=0, sticky="ne")
+        elem.insert(row=self.next_row, column=2, search_menu=self)
+        menu_field = MenuField(field_label, elem)
+        self.next_row += 1
+        return menu_field
+
+    def post_search(self, menu: Searcher, display_header: str, values: list[str]):
+        self.active_searcher = menu
+        self.search_display.state(("!disabled",))
+        self.search_display.delete(*self.search_display.get_children())
+        if not values:
+            self.search_display.config(selectmode=tk.NONE)
+            self.search_display.column("display", anchor=tk.CENTER)
+            self.search_display.insert("", "end", id=0, text="", values=["... No Results found ..."])
+        else:
+            self.search_display.column("display", anchor=tk.W)
+            self.search_display.config(selectmode=tk.BROWSE)
+            for i, entry in enumerate(values):
+                self.search_display.insert("", "end", id=i, text="", values=[entry])
+        self.search_display.heading("display", text=display_header)
+
+    def set_selected(self, index: int):
+        assert self.active_searcher is not None
+        self.search_display.selection_set(index)
 
 
 class EventEditor:
@@ -66,8 +122,15 @@ class EventEditor:
 
 
 class SharedData:
-    def insert(self, row: int, column: int): pass
+    def insert(self, row: int, column: int):
+        raise NotImplementedError
 
+class Searcher:
+    def insert(self, row: int, column: int, search_menu: EditMenuWithSearcher):
+        raise NotImplementedError
+
+    def notify_about_selection(self, index: int):
+        raise NotImplementedError
 
 class Display(SharedData):
     display: ttk.Label
@@ -152,24 +215,24 @@ class QuantityEntry(SharedData):
         parsed = units.parse_expression(self.get_text())
         return parsed
 
+def identity(n): return n
 
 class FixedOptions(SharedData):
     def __init__(self, container: ttk.Frame): pass
 
-class DbSearchOptions[T](SharedData):
+class DbSearchOptions[T](Searcher):
     search_bar: ttk.Entry
     text_var: tk.StringVar
-    side_bar_ref: ttk.Treeview
     search_fn: Callable[[str], list[T]]
     translation_fn: Callable[[T], str]
     display_header: str
     entries: list[T]
+    search_menu: EditMenuWithSearcher
     selected: T | None
 
-    def __init__(self, container: ttk.Frame, side_bar: ttk.Treeview, initial_value: str, db_search: Callable[[str], list[T]], translation_fn: Callable[[T], str], display_header: str = "Options"):
+    def __init__(self, container: ttk.Frame, display_header: str, db_search: Callable[[str], list[T]], translation_fn: Callable[[T], str] = identity, initial_value: str = ""):
         self.search_bar = ttk.Entry(container)
         self.text_var = tk.StringVar(self.search_bar)
-        self.side_bar_ref = side_bar
         self.search_fn = db_search
         self.translation_fn = translation_fn
         self.display_header = display_header
@@ -179,14 +242,33 @@ class DbSearchOptions[T](SharedData):
         self.search_bar.config(textvariable=self.text_var)
         self.search_bar.insert(tk.END, initial_value)
         self.text_var.trace_add("write", self._on_text_update)
-        self.search_bar.bind("<FocusIn>", self._on_focus)
+        self.search_bar.bind("<FocusIn>", self._on_focus, add=True)
+        self.search_bar.bind("<KeyPress-Return>", self._on_press_enter, add=True)
         self.update_on_text_changes = True
 
-    def insert(self, row: int, column: int):
+    def _on_press_enter(self, event: tk.Event):
+        if len(self.entries) == 1:
+            self.search_menu.set_selected(0)
+            self.search_bar.after_idle(self.search_bar.icursor, tk.END)
+    
+    def _on_focus(self, event: tk.Event):
+        self.show_search_results_in_side_bar()
+
+    def _on_text_update(self, *_):
+        if self.update_on_text_changes:
+            self.selected = None
+            self.show_search_results_in_side_bar()
+
+    def insert(self, row: int, column: int, search_menu: EditMenuWithSearcher):
+        self.search_menu = search_menu
         self.search_bar.grid(row=row, column=column, sticky="nw")
 
-    def set_text(self, text: str):
+    def set_text(self, text: str, skip_text_update_callback=False):
+        if skip_text_update_callback:
+            self.update_on_text_changes = False
         self.text_var.set(text)
+        if skip_text_update_callback:
+            self.update_on_text_changes = True
 
     def get_text(self) -> str:
         return self.text_var.get()
@@ -195,37 +277,16 @@ class DbSearchOptions[T](SharedData):
         return self.selected
 
     def show_search_results_in_side_bar(self):
-        self.side_bar_ref.state(("!disabled",))
-        self.side_bar_ref.bind("<<TreeviewSelect>>", self._on_select_search_results)
-        self.side_bar_ref.delete(*self.side_bar_ref.get_children())
-        self.entries = self.search_fn(self.text_var.get())
-        if not self.entries:
-            self.side_bar_ref.config(selectmode=tk.NONE)
-            self.side_bar_ref.column("display", anchor=tk.CENTER)
-            self.side_bar_ref.insert("", "end", id=0, text="", values=["... No Results found ..."])
-        else:
-            self.side_bar_ref.column("display", anchor=tk.W)
-            self.side_bar_ref.config(selectmode=tk.BROWSE)
-            for i, entry in enumerate(self.entries):
-                self.side_bar_ref.insert("", "end", id=i, text="", values=[self.translation_fn(entry)])
-        self.side_bar_ref.heading("display", text=self.display_header)
+        search_text = self.text_var.get().strip()
+        self.entries = self.search_fn(search_text)
+        self.search_menu.post_search(self, self.display_header, list(map(self.translation_fn, self.entries)))
 
-    def _on_select_search_results(self, event: tk.Event):
-        selected = self.side_bar_ref.selection()
-        if len(selected) >= 1:
-            selected_index = int(selected[0])
-            self.selected = self.entries[selected_index]
-            self.update_on_text_changes = False
-            self.set_text(self.translation_fn(self.selected))
-            self.update_on_text_changes = True
+        if len(self.entries) == 1 and self.translation_fn(self.entries[0]).strip().lower() == search_text.lower():
+            self.search_menu.set_selected(0)
 
-    def _on_focus(self, event: tk.Event):
-        self.show_search_results_in_side_bar()
-
-    def _on_text_update(self, *_):
-        if self.update_on_text_changes:
-            self.show_search_results_in_side_bar()
-            self.selected = None
+    def notify_about_selection(self, index: int):
+        self.selected = self.entries[index]
+        self.set_text(self.translation_fn(self.selected), skip_text_update_callback=True)
 
 class Image(SharedData):
     def __init__(self, container: ttk.Frame): pass

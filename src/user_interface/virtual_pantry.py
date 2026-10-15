@@ -123,7 +123,7 @@ class VPantryEditMenu(em.EditMenu):
         self.pantry.refresh_pantry()
         self.container.destroy()
 
-class VPantryAddMenu(em.EditMenu):
+class VPantryAddMenu(em.EditMenuWithSearcher):
     pantry: VirtualPantry
     container: tk.Toplevel
     ingredient_name: em.MenuField[em.DbSearchOptions[ExistingIngredient]]
@@ -135,12 +135,8 @@ class VPantryAddMenu(em.EditMenu):
 
     def __init__(self, pantry: VirtualPantry, container: tk.Toplevel) -> None:
         super().__init__(container)
-        self.db_search_display = ttk.Treeview(self.frame, columns=["display"], show="headings")
-        self.db_search_scrollbar = ttk.Scrollbar(self.frame, command=self.db_search_display.yview)
-        self.db_search_display.config(yscrollcommand=self.db_search_scrollbar.set)
-        self.db_search_display.state(("disabled",))
 
-        self.ingredient_name = self.insert("Ingredient", em.DbSearchOptions(self.frame, self.db_search_display, "", self._search, lambda i: i.name))
+        self.ingredient_name = self.insert_searcher("Ingredient", em.DbSearchOptions(self.frame, "Ingredients", self._search, lambda i: i.name))
         self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, 0 * units.units.dimensionless))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
         self.cancel_button.configure(command=container.destroy)
@@ -150,12 +146,8 @@ class VPantryAddMenu(em.EditMenu):
 
         self.last_search = []
 
-        row_count = self.get_row_count()
-        self.db_search_display.grid(row=1, column=3, rowspan=row_count - 3, sticky="ns")
-        self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 3, sticky="ns")
-
     def _search(self, query: str) -> list[ExistingIngredient]:
-        return self.pantry.ing_backend.load_ingredient_list()
+        return self.pantry.ing_backend.load_ingredient_list("ingredient", query)
 
     def save_and_close(self):
         new_quantity = self.amount.elem.get_quantity()

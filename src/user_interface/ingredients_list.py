@@ -104,7 +104,7 @@ class IngredientsList:
             lambda tl: IngredientEditMenu(self, tl, selected_ingredient).frame
         )
 
-class IngredientEditMenu(em.EditMenu):
+class IngredientEditMenu(em.EditMenuWithSearcher):
     ingredient_name: em.MenuField[em.Entry]
     tag: em.MenuField[em.DbSearchOptions[str]]
     # fdcid: em.MenuField[em.Display]
@@ -132,22 +132,13 @@ class IngredientEditMenu(em.EditMenu):
 
         super().__init__(container)
 
-        self.db_search_display = ttk.Treeview(self.frame, columns=["display"], show="headings")
-        self.db_search_scrollbar = ttk.Scrollbar(self.frame, command=self.db_search_display.yview)
-        self.db_search_display.config(yscrollcommand=self.db_search_scrollbar.set)
-        self.db_search_display.state(("disabled",))
-
         self.ingredient_name        = self.insert("Ingredient Name", em.Entry(self.frame, name))
-        self.tag                    = self.insert("Tag", em.DbSearchOptions(self.frame, self.db_search_display, tag, self._search_tags, lambda t: t, "Tags"))
-        # self.fdcid                  = self.insert("FDC ID", em.Display(self.frame, fdcid))
-        self.ingredient_measurement = self.insert("Measurement Type", em.DbSearchOptions(self.frame, self.db_search_display, measure, self._search_measurements, lambda t: t, "Measurements"))
+        self.tag                    = self.insert_searcher("Tag", em.DbSearchOptions(self.frame, "Tags", self._search_tags, initial_value=tag))
+        self.ingredient_measurement = self.insert_searcher("Measurement Type", em.DbSearchOptions(self.frame, "Measurements", self._search_measurements, initial_value=measure))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
 
         self.cancel_button.config(command=container.destroy)
         self.save_button.config(command=self.save_and_close)
-        row_count = self.get_row_count()
-        self.db_search_display.grid(row=1, column=3, rowspan=row_count - 3, sticky="ns")
-        self.db_search_scrollbar.grid(row=1, column=4, rowspan=row_count - 3, sticky="ns")
 
     def _search_tags(self, user_input: str) -> list[str]:
         self.tag_search_results = self.ingr_list.backend.tags_in_use(user_input)
