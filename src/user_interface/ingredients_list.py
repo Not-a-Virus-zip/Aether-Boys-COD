@@ -14,6 +14,7 @@ from ..backend import (
 from ..backend.ingredient_list import Ingredient, ExistingIngredient
 
 class IngredientsList:
+    """Constructs and controls the ingredients UI"""
     backend: il_backend.IngredientList
 
     virtual_pantry: vp.VirtualPantry
@@ -26,7 +27,7 @@ class IngredientsList:
     add_button: ttk.Button
     edit_button: ttk.Button
 
-    def __init__(self, parent: tk.Tk | ttk.Frame, virtual_pantry: vp.VirtualPantry, ing_backend: il_backend.IngredientList):
+    def __init__(self, parent: ttk.Notebook, virtual_pantry: vp.VirtualPantry, ing_backend: il_backend.IngredientList):
         self.backend = ing_backend
 
         self.virtual_pantry = virtual_pantry
@@ -63,7 +64,7 @@ class IngredientsList:
                 ("Add New", self.press_add_button),
                 ("Edit Selected", self.press_edit_button)
             ),
-            button_weight=1
+            button_weight=1 # buttons should expand to fill the avalable space
         )
         self.edit_button.config(state=tk.DISABLED)
         bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
@@ -105,9 +106,9 @@ class IngredientsList:
         )
 
 class IngredientEditMenu(em.EditMenuWithSearcher):
+    """Constructs and controls the pop-up menu for adding/editing ingredients"""
     ingredient_name: em.MenuField[em.Entry]
     tag: em.MenuField[em.DbSearchOptions[str]]
-    # fdcid: em.MenuField[em.Display]
     ingredient_measurement: em.MenuField[em.DbSearchOptions]
     db_search_display: ttk.Treeview
     db_search_scrollbar: ttk.Scrollbar

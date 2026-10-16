@@ -26,6 +26,12 @@ class MenuField[T]:
     elem: T
 
 class EditMenu:
+    """
+    A base class used to partially automate the construction of pop-up menus.
+    To use, call `insert` to add elements to the menu.
+    Call `finish_construction` once all elements have been added.
+    It also lets you add save/cancel buttons to the bottom of the menu.
+    """
     frame: ttk.Frame
 
     def __init__(self, parent: tk.Toplevel) -> None:
@@ -56,6 +62,10 @@ class EditMenu:
         return self.next_row
 
 class EditMenuWithSearcher(EditMenu):
+    """
+    An extension of EditMenu which has a panel on the side which shows
+    live search results (required for DbSearchOptions).
+    """
     search_display: ttk.Treeview
     active_searcher: Searcher | None
 

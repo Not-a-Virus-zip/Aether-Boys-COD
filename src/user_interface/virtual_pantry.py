@@ -17,7 +17,8 @@ from ..backend.ingredient_list import (Ingredient, ExistingIngredient)
 
 
 class VirtualPantry:
-    backend: vp_backend.VirtualPantry
+    """Constructs and controls the virtual pantry UI"""
+    pantry_backend: vp_backend.VirtualPantry
     ing_backend: il_backend.IngredientList
     name: str = "Virtual Pantry"
     frame: ttk.Frame
@@ -26,15 +27,14 @@ class VirtualPantry:
     add_button: ttk.Button
     edit_button: ttk.Button
 
-    def __init__(self, parent: tk.Tk | ttk.Frame, ing_backend: il_backend.IngredientList):
-        self.backend = vp_backend.VirtualPantry()
-        self.ing_backend = ing_backend
-        self.frame = vp_frame = ttk.Frame(parent, name="virtual pantry", padding=20)
-        list_frame = ttk.Frame(vp_frame)
-        list_frame.columnconfigure(0, weight=1)
-        list_frame.rowconfigure(0, weight=1)
-        self.pantry_display = pantry_disp = ttk.Treeview(list_frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
-        scrollbar = ttk.Scrollbar(list_frame, command=pantry_disp.yview)
+    def __init__(self, parent: ttk.Notebook, backend: ui.Backend):
+        self.pantry_backend = backend.pantry
+        self.ing_backend = backend.ingredients
+        self.frame = ttk.Frame(parent, name="virtual pantry", padding=20)
+        self.frame.columnconfigure(0, weight=1)
+        self.frame.rowconfigure(0, weight=1)
+        self.pantry_display = pantry_disp = ttk.Treeview(self.frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
+        scrollbar = ttk.Scrollbar(self.frame, command=pantry_disp.yview)
         pantry_disp.config(yscrollcommand=scrollbar.set)
         pantry_disp.heading("ingr", text="Ingredient")
         pantry_disp.heading("qty", text="Quantity")
@@ -46,29 +46,23 @@ class VirtualPantry:
         
         scrollbar.grid(row=0, column=1, sticky="ns")
         pantry_disp.grid(row=0, column=0, sticky="news")
-        list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
-        vp_frame.rowconfigure(0, weight=1)
-        vp_frame.columnconfigure(0, weight=1)
-        vp_frame.columnconfigure(1, weight=1)
-        bottom_buttons: list[ttk.Button] = []
-        for col, name in enumerate(("Add New", "Edit Selected")):
-            button = ttk.Button(vp_frame, text=name)
-            button.grid(row=1, column=col, sticky="ew")
-            bottom_buttons.append(button)
-
-        self.add_button, self.edit_button = bottom_buttons
+        self.frame.grid(row=0, column=0, sticky="news")
+        buttons_frame, (self.add_button, self.edit_button) = \
+            ui.make_buttons(self.frame, ("Add New", "Edit Selected"), button_weight=1)
         self.add_button.config(command=self.press_add_button)
         self.edit_button.config(command=self.press_edit_button, state=tk.DISABLED)
-        pantry_disp.bind("<<TreeviewSelect>>", self.on_selection_change)
+        buttons_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+
+        pantry_disp.bind("<<TreeviewSelect>>", self._on_selection_change)
 
     def refresh_pantry(self):
         if len(self.pantry_contents) > 0:
             self.pantry_display.delete(*range(len(self.pantry_contents)))
-        self.pantry_contents = self.backend.load_virtual_pantry_contents()
+        self.pantry_contents = self.pantry_backend.load_virtual_pantry_contents()
         for i, (ingr, qty) in enumerate(self.pantry_contents):
             self.pantry_display.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
 
-    def on_selection_change(self, tv: tk.Event) -> object:
+    def _on_selection_change(self, tv: tk.Event) -> object:
         self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
     
     def is_ingr_selected(self) -> bool:
@@ -96,6 +90,7 @@ class VirtualPantry:
         )
 
 class VPantryEditMenu(em.EditMenu):
+    """Constructs and controls the menu for editing an ingredient that's already in the virtual pantry"""
     pantry: VirtualPantry
     container: tk.Toplevel
     ingredient_name: em.MenuField[em.Display]
@@ -119,11 +114,14 @@ class VPantryEditMenu(em.EditMenu):
         new_quantity = self.amount.elem.get_quantity()
         # TODO: handle this case
         # assert self.prev_quantity.is_compatible_with(new_quantity)
-        self.pantry.backend.update_vpantry_entry(self.ingredient, new_quantity)
+        self.pantry.pantry_backend.update_vpantry_entry(self.ingredient, new_quantity)
         self.pantry.refresh_pantry()
         self.container.destroy()
 
 class VPantryAddMenu(em.EditMenuWithSearcher):
+    """
+    Constructs and controls the menu for adding a new ingredient to the virtual pantry.
+    This uses a different class because it requires selecting what ingredient to add."""
     pantry: VirtualPantry
     container: tk.Toplevel
     ingredient_name: em.MenuField[em.DbSearchOptions[ExistingIngredient]]
@@ -154,6 +152,6 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
         ingredient = self.ingredient_name.elem.get_selection()
         # TODO: handle this case
         assert ingredient is not None
-        self.pantry.backend.add_vpantry_entry(ingredient, new_quantity)
+        self.pantry.pantry_backend.add_vpantry_entry(ingredient, new_quantity)
         self.pantry.refresh_pantry()
         self.container.destroy()
