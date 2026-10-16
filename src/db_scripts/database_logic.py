@@ -103,30 +103,21 @@ class VirtualPantryQuery(SelectDB):
             print(f'{e}: There was an invalid ID given for measure {measure_id!r}. Please check!')
             return False
 
-
-# class TagQuery(SelectDB):
-
-#     select_query = 'SELECT *' \
-#                    'From Tag '
-#     accepted_filters = {'name': 'name', 'type': 'tagType', 'id': 'tagID'}
-#     accepted_sorts = {'name': 'name', 'type': 'tagType', 'date': 'tagID'}
-
-#     @staticmethod
-#     def run_insert(name: str, tag_type: str):
-#         try:
-#             with get_connection() as con:
-#                 cur = con.cursor()
-#                 cur.execute('INSERT INTO Tag (name, tagType) VALUES (?,?)',
-#                             (name,tag_type))
-#         except sql.IntegrityError as e:
-#             raise f'{e}: Type must be \'Ingredient\' or \'Meal\''
-
-
-
 class MeasureTypeQuery(SelectDB):
 
-        select_query = 'SELECT *' \
-                       'FROM MeasureType '
-        accepted_filters = {'name': 'name', 'dimension': 'dimension', 'id': 'measureID'}
-        accepted_sorts = {'name': 'name', 'dimension': 'dimension', 'date': 'measureID'}
+    select_query = 'SELECT * ' \
+                   'FROM MeasureType '
+    accepted_filters = {'name': 'name','id': 'measureID'}
+    accepted_sorts = {'name': 'name', 'date': 'measureID'}
 
+class MealQuery(SelectDB):
+
+    select_query = 'SELECT * ' \
+                   'FROM Meal '
+
+    accepted_filters = {'name' : 'name', 'id': 'mealID'}
+    accepted_sorts = {'name' : 'name', 'date': 'mealID'}
+
+
+class MealIngredientQuery(SelectDB):
+    pass

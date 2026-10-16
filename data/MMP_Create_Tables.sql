@@ -1,23 +1,18 @@
 PRAGMA foreign_keys = ON;  --This needs to be run everytime the python file connects to it.
 
+DROP TABLE IF EXISTS MealIngredient;
+DROP TABLE IF EXISTS Meal;
 DROP TABLE IF EXISTS VirtualPantry;
 DROP TABLE IF EXISTS Ingredient;
-DROP TABLE IF EXISTS MealTag;
-DROP TABLE IF EXISTS Tag;   -- legacy name, removed so old databases get cleaned up
+DROP TABLE IF EXISTS MealTag; -- legacy table, removed so old databases get cleaned up
+DROP TABLE IF EXISTS Tag;   -- legacy table, removed so old databases get cleaned up
 DROP TABLE IF EXISTS MeasureType;
+
 
 CREATE TABLE MeasureType(
     measureID integer primary key,
-    name TEXT NOT NULL,
-    plural TEXT NOT NULL,
-    abbreviation TEXT NOT NULL,
-    dimension TEXT NOT NULL CHECK (dimension IN ('Mass', 'Volume', 'Count'))
-);
-
--- Meal tags only. An ingredient's category is stored as plain text in Ingredient.tag.
-CREATE TABLE MealTag(
-    tagID INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
+    name TEXT NOT NULL UNIQUE,
+    abbreviation TEXT NOT NULL
 );
 
 CREATE TABLE Ingredient(
@@ -36,6 +31,29 @@ CREATE TABLE VirtualPantry(
     measureID INTEGER NOT NULL,
     FOREIGN KEY(ingredientID) REFERENCES Ingredient(ingredientID)
         ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY(measureID) REFERENCES MeasureType(measureID)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE TABLE Meal(
+    mealID INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    tag TEXT,
+    picture TEXT,
+    description TEXT,
+    recipe TEXT
+);
+
+CREATE TABLE MealIngredient (
+    mealID INTEGER NOT NULL,
+    ingredientID INTEGER NOT NULL,
+    qty REAL NOT NULL CHECK (qty > 0),
+    measureID INTEGER NOT NULL,
+    PRIMARY KEY (mealID, ingredientID),
+    FOREIGN KEY(mealID) REFERENCES Meal(mealID)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY(ingredientID) REFERENCES Ingredient(ingredientID)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     FOREIGN KEY(measureID) REFERENCES MeasureType(measureID)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );

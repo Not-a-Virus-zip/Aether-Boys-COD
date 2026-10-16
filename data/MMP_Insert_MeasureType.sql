@@ -1,32 +1,29 @@
--- Seed data for MeasureType
--- Run after MMP Create Tables.sql
--- Dimension values used: 'Volume', 'Mass', 'Count'
+PRAGMA foreign_keys = ON;
 
-INSERT INTO MeasureType (name, plural, abbreviation, dimension) VALUES
-    -- Volume (US)
-    ('teaspoon',     'teaspoons',     'tsp',    'Volume'),
-    ('tablespoon',   'tablespoons',   'tbsp',   'Volume'),
-    ('fluid ounce',  'fluid ounces',  'fl oz',  'Volume'),
-    ('cup',          'cups',          'cup',    'Volume'),
-    ('pint',         'pints',         'pt',     'Volume'),
-    ('quart',        'quarts',        'qt',     'Volume'),
-    ('gallon',       'gallons',       'gal',    'Volume'),
+-- ============================================================
+-- MEASURETYPE seed data
+-- Run this BEFORE MMP_Test_Data.sql (Ingredient and MealIngredient
+-- have foreign keys to MeasureType).
+-- name = canonical Pint unit name (checked with ureg.parse_units).
+-- abbreviation = display text only (not meant to be parsed by Pint).
+-- 'count' replaces 'each' because Pint has no 'each' unit.
+-- ============================================================
 
-    -- Volume (metric)
-    ('milliliter',   'milliliters',   'mL',     'Volume'),
-    ('liter',        'liters',        'L',      'Volume'),
-
-    -- Mass (US)
-    ('ounce',        'ounces',        'oz',     'Mass'),
-    ('pound',        'pounds',        'lb',     'Mass'),
-
-    -- Mass (metric)
-    ('gram',         'grams',         'g',      'Mass'),
-    ('kilogram',     'kilograms',     'kg',     'Mass'),
-
-    -- Count
-    ('piece',        'pieces',        'pc',     'Count'),
-    ('clove',        'cloves',        'clove',  'Count'),
-    ('slice',        'slices',        'slice',  'Count'),
-    ('can',          'cans',          'can',    'Count'),
-    ('pinch',        'pinches',       'pinch',  'Count');
+INSERT OR IGNORE INTO MeasureType (name, abbreviation) VALUES
+    -- mass
+    ('gram',        'g'),
+    ('kilogram',    'kg'),
+    ('ounce',       'oz'),
+    ('pound',       'lb'),
+    -- volume
+    ('milliliter',  'mL'),
+    ('liter',       'L'),
+    ('teaspoon',    'tsp'),
+    ('tablespoon',  'tbsp'),
+    ('fluid_ounce', 'fl oz'),
+    ('cup',         'cup'),
+    ('pint',        'pt'),
+    ('quart',       'qt'),
+    ('gallon',      'gal'),
+    -- countable items
+    ('count',       'ct');

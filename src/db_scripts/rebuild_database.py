@@ -9,8 +9,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # This gets the path to the meal planner
 DB_PATH = BASE_DIR / 'data' / 'mymealplanner.db'
 SCRIPT_PATH = BASE_DIR / 'data'
-SQL_FILES = ('MMP_Create_Tables.sql', 'MMP_Insert_MeasureType.sql', 'MMP_Insert_MealTag.sql',
-             'MMP_Insert_Ingredient.sql', 'MMP_Insert_VirtualPantry.sql')
+SQL_FILES = ('MMP_Create_Tables.sql', 'MMP_Insert_MeasureType.sql',
+             'MMP_Insert_Test_Data.sql',)
 
 # Rebuilds and deletes all previous data in the database
 def _rebuild_database(): 
@@ -30,7 +30,7 @@ def _rebuild_database():
 if __name__ == '__main__':
     response = ''
     while response != 'y' and response != 'n':
-        response = input('Are you sure you want to roll back? [y/n]')
+        response = input('Are you sure you want to rebuild? (All data will be deleted) [y/n] ')
         if response.lower().strip() == 'y':
             _rebuild_database()
         elif response.lower().strip() == 'n':
