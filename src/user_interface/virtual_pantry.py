@@ -18,9 +18,10 @@ from ..backend.ingredient_list import (Ingredient, ExistingIngredient)
 
 class VirtualPantry:
     """Constructs and controls the virtual pantry UI"""
+    name: str = "Virtual Pantry"
+    
     pantry_backend: vp_backend.VirtualPantry
     ing_backend: il_backend.IngredientList
-    name: str = "Virtual Pantry"
     frame: ttk.Frame
     pantry_display: ttk.Treeview
     pantry_contents: list[tuple[ExistingIngredient, pint.Quantity]]

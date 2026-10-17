@@ -301,6 +301,9 @@ class DbSearchOptions[T](Searcher):
 class Image(SharedData):
     def __init__(self, container: ttk.Frame): pass
 
+class IngredientSelector(SharedData):
+    def __init__(self, container: ttk.Frame): pass
+
 class ListDisplay(SharedData):
     def __init__(self, container: ttk.Frame): pass
 
