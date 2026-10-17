@@ -33,6 +33,9 @@ class SelectDB:
     select_query: ClassVar[str]
     accepted_filters: ClassVar[dict[str, str]]
     accepted_sorts: ClassVar[dict[str, str]]
+    
+    delete_table_name = ClassVar[str]
+    delete_id_name = ClassVar[str]
 
     @classmethod
     def run_select(
@@ -69,6 +72,17 @@ class SelectDB:
         return rows.fetchall()
 
     @classmethod
+    def run_delete(cls, given_id: str):
+        try:
+            with get_connection() as con:
+                cur = con.cursor()
+                cur.execute(f'DELETE FROM {cls.delete_table_name} WHERE {cls.delete_id_name} = ?', (given_id))
+        # TODO: This type of error will happen often. We need a error message showing what constraints are keeping it from being deleted
+        except sql.IntegrityError as e:
+            raise QueryDeleteError
+
+
+    @classmethod
     def _get_order(cls, order: str | None, asc: bool) -> str:
         if order is None:
             order = list(cls.accepted_sorts.keys())[0]
@@ -84,17 +98,29 @@ class SelectDB:
         return order_sql
 
 
-# def check_tag(tag_name: str) -> int:
-#     """Checks user's Tag to see if the exists in the database"""
-#     found_tag = tq.run_select(filter_column='name', filter_value=tag_name.title().strip(), exact=True)
-#     if not found_tag:
-#         return None
-#     else:
-#         return found_tag[0][0]
+# Errors for logic
+class MealIngredientQuery(SelectDB):
+    pass
 
-# def check_measuretype(mt_name: str) -> int:
-#     found_mt = mtq.run_select(filter_column='name', filter_value=mt_name.title().strip(), exact=True)
-#     if not found_mt:
-#         return None
-#     else:
-#         return found_mt[0][0]
+# Errors for data validation
+class DatabaseErrors(Exception): 
+    """Base class for this library"""
+
+class QueryInvalidFK(DatabaseErrors):
+    def __init__(self, value_type, value):
+        self.value_type = value_type
+        self.value = value
+
+    def __str__(self):
+        return f'Invalid {self.value_type} given!'
+
+class QueryUpdateError(DatabaseErrors):
+    def __init__(self, identifier):
+        self.identifier = identifier
+
+    def __str__(self):
+        return f'Unable to update: {self.identifier!r}'
+
+class QueryDeleteError(DatabaseErrors):
+    def __str__(self):
+        return f'Unable to delete selected item. Probably constrained to another item'
