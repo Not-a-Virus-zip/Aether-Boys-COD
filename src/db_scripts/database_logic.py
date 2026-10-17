@@ -77,20 +77,19 @@ class VirtualPantryQuery(SelectDB):
 
     # Stores new data in the database
     @staticmethod
-    def run_insert(ingredient_id: str, qty_owned: float, measure_id: str) -> bool:
+    def run_insert(ingredient_id: str, qty_owned: float, measure_id: str):
         try:
             with get_connection() as con:
                 cur = con.cursor()
                 cur.execute("INSERT INTO VirtualPantry (ingredientID, qtyHave, measureID) VALUES (?, ?, ?)", 
                             (ingredient_id, qty_owned, measure_id,))
-            return True
         except sql.IntegrityError as e:
             print(f'{e} The Ingredient was ID#: {ingredient_id!r}!')
-            return False
+
 
     # Updates an existing entry
     @staticmethod
-    def run_update(ingredient_id: str, qty: str, measure_id: str) -> bool:
+    def run_update(ingredient_id: str, qty: str, measure_id: str):
         try:
             with get_connection() as con:
                 cur = con.cursor()
@@ -99,10 +98,9 @@ class VirtualPantryQuery(SelectDB):
                             'WHERE ingredientID = ?;',
                             (qty, measure_id, ingredient_id))
                 print(f"Adding {ingredient_id} {qty} {measure_id}")
-            return True
         except sql.IntegrityError as e:
             print(f'{e}: There was an invalid ID given for measure {measure_id!r}. Please check!')
-            return False
+
 
 class MeasureTypeQuery(SelectDB):
 
@@ -133,7 +131,7 @@ class MealQuery(SelectDB):
                 cur.execute('INSERT INTO Meal(name, tag, picture, description, recipe) VALUES (?, ?, ?, ?, ?)', 
                             (name, tag, picture, description, recipe))
             except sql.IntegrityError as e: 
-                print()
+                print({e})
         
 
         

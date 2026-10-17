@@ -39,16 +39,16 @@ class IngredientList:
 
     # TODO: Replace "raise NotImplementedError" with actual implementation
 
-    def update_ingredient(self, modified: ExistingIngredient) -> bool:
+    def update_ingredient(self, modified: ExistingIngredient):
         """Store a modified version of an ingredient, replacing the previous version"""
-        # if check_tag(updated_ingredient.tag) is None:
-        #    raise ValueError
-        # if check_measuretype(updated_ingredient.measurment_type) is None:
-        #    raise ValueError
-        return iq.run_update(modified.id, modified.name, modified.tag, modified.measurement_type.id)
+        if f'{modified.tag}'.strip() == '':
+            modified = modified.modify(tag = None)
+        iq.run_update(modified.id, modified.name, modified.tag, modified.measurement_type.id)
 
     def create_ingredient(self, name: str, tag: str, measure_type: int):
         """Create a new ingredient"""
+        if f'{tag}'.strip() == '':
+            tag = None
         iq.run_insert(name, tag, measure_type)
 
     # Pulls up a list of available MeasurementTypes(?)
@@ -63,34 +63,11 @@ class IngredientList:
         """Get the current ingredient list"""
         ing_list = []
         for id, name, tag, measure in iq.run_select(filter_column=filter_column, filter_value=filter_value):
+            if tag is None:
+                tag = ''  # If tk tries to show None, it blows up :D
             ing_list.append(ExistingIngredient(name, tag, measure, id))
         return ing_list
 
     def tags_in_use(self, query: str):
         """Get a list of unique tags in use"""
         return [tag for tag, in iq.run_get_tags(query or None)]
-
-
-# Removed for hello world project
-# @dataclass
-# class Tag:
-#     id: int
-#     name: str
-
-# class TagList:
-    # Needs update
-    # def load_meal_tag_list(self):
-    #     """Search for existing meal tags"""
-    #     tag_list = []
-    #     for tag in tq.run_select(filter_column='type', filter_value='Meal'):
-    #         tag_list.append(Tag(tag[0], tag[1]))
-    #     return tag_list
-    
-    # def create_tag(self, name: str, type: str):
-    #     """Creates a new tag"""
-    #     if type.capitalize().strip() == 'Meal' or type.capitalize().strip() == 'Ingredient':
-    #         tq.run_insert(name, type)
-    #         new_tag = self.load_ingredient_tag_list()
-    #         return new_tag
-    #     else:
-    #         raise 'type must be \'Ingredient\' or \'Meal\''
