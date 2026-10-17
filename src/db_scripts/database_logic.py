@@ -19,20 +19,22 @@ class IngredientQuery(SelectDB):
 
     # Stores new data in the database
     @staticmethod
-    def run_insert(ingredient_name: str, tag: str, measure_id: int) -> bool:
-        try:
-            with get_connection() as con:
-                cur = con.cursor()
-                cur.execute("INSERT INTO Ingredient(name, tag, measureID) VALUES (?, ?, ?)", 
-                            (ingredient_name, tag, measure_id,))
-            return True
-        except sql.IntegrityError as e:
-            print(f'{e}: There was an ID that is invalid...\nTagID: {tag}\nMeasureID: {measure_id}')
-            return False
+    def run_insert(ingredient_name: str, tag: str, measure_id: int):
+        valid_check = IngredientQuery.run_select(filter_column='unit', filter_value=measure_id)
+        if valid_check is None:
+            raise InvalidFK()
+        with get_connection() as con:
+            cur = con.cursor()
+            cur.execute("INSERT INTO Ingredient(name, tag, measureID) VALUES (?, ?, ?)", 
+                        (ingredient_name, tag, measure_id,))
+        
 
     # Updates an existing entry
     @staticmethod
     def run_update(ingredient_id: int, ingredient_name: str, tag: str, measure_id: int):
+        valid_check = IngredientQuery.run_select(filter_column='unit', filter_value=measure_id)
+        if valid_check is None:
+            raise InvalidFK('Measure Type')
         try: 
             with get_connection() as con:
                 cur = con.cursor()
@@ -40,10 +42,9 @@ class IngredientQuery(SelectDB):
                             'SET name = ?, tag = ?, measureID = ?' \
                             'WHERE ingredientID = ?;',
                             (ingredient_name, tag, measure_id, ingredient_id))
-            return True
         except sql.IntegrityError as e:
             print(f'{e}: There was an invalid ID given. Please check!')
-            return False
+
 
     @staticmethod
     def run_get_tags(filter_value: str | None = None) -> list[tuple[str]]:
@@ -115,9 +116,45 @@ class MealQuery(SelectDB):
     select_query = 'SELECT * ' \
                    'FROM Meal '
 
-    accepted_filters = {'name' : 'name', 'id': 'mealID'}
-    accepted_sorts = {'name' : 'name', 'date': 'mealID'}
+    accepted_filters = {'name' : 'name', 'id': 'mealID', 'tag': 'tag'}
+    accepted_sorts = {'name' : 'name', 'date': 'mealID', 'tag': 'tag'}
+
+    # TODO: This is not done. I'm getting distracted with making errors
+    @staticmethod
+    def run_insert(name: str, 
+                   tag: str | None = None, 
+                   picture: str | None = None, 
+                   description: str | None = None, 
+                   recipe : str | None = None
+                   ):
+        with get_connection() as con:
+            try:
+                cur = con.cursor()
+                cur.execute('INSERT INTO Meal(name, tag, picture, description, recipe) VALUES (?, ?, ?, ?, ?)', 
+                            (name, tag, picture, description, recipe))
+            except sql.IntegrityError as e: 
+                print()
+        
+
+        
+
+    @staticmethod
+    def run_update():
+        pass
 
 
 class MealIngredientQuery(SelectDB):
     pass
+
+
+# Errors for data validation
+class DatabaseErrors(Exception): 
+    """Base class for this library"""
+
+class InvalidFK(DatabaseErrors):
+    def __init__(self, value_type, value):
+        self.value_type = value_type
+        self.value = value
+
+    def __str__(self):
+        return f'Invalid {self.value_type} given!'
