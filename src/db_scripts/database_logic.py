@@ -10,7 +10,7 @@ type Tag = str
 class IngredientQuery(SelectDB):
 
     # Variables needed for SELECT
-    select_query = 'SELECT i.ingredientID, i.name, i.tag, mt.name ' \
+    select_query = 'SELECT i.ingredientID, i.name, i.tag, i.measureID, mt.name ' \
                    'FROM Ingredient as i ' \
                    'LEFT JOIN MeasureType as mt ' \
                        'ON i.measureID = mt.measureID '

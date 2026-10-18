@@ -27,9 +27,9 @@ class MealCatalog:
         meal_list.treeview.column("name", anchor="w")
         meal_list.treeview.column("desc", anchor="w")
 
-        example_meals = [(f"Test Meal {i}", f"Lorem Ipsum Test Description {i}") for i in range(20)]
-        for name, desc in example_meals:
-            meal_list.treeview.insert("", "end", text="", values=[name, desc])
+        
+        for meal in backend.meals.get_meals():
+            meal_list.treeview.insert("", "end", text="", values=[meal.name, meal.description])
         meal_list.grid(row=0, column=0, columnspan=2, sticky="news")
         
 

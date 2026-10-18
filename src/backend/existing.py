@@ -14,3 +14,13 @@ class IsDataclass(typing.Protocol):
 def modify[T: IsDataclass](self: T, **kwargs) -> T:
     assert "id" not in kwargs, "Cannot modify id of existing database entry"
     return dataclasses.replace(self, **kwargs)
+
+def type_check[T: IsDataclass](dataclass: type[T], values: tuple[typing.Any, ...]):
+    """
+    Check the types of the objects in values against the fields of the dataclass
+    and raise an exception if they don't match
+    """
+    hints = typing.get_type_hints(dataclass.__init__)
+    for (field_name, expected_type), actual_value in zip(hints.items(), values):
+        if not isinstance(actual_value, expected_type):
+            raise TypeError(f"Expected {expected_type}, found {type(actual_value)} for {dataclass.__name__}.{field_name}")

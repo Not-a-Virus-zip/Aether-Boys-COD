@@ -23,6 +23,7 @@ from . import (
 from ..backend import (
     ingredient_list as il_backend,
     virtual_pantry as vp_backend,
+    meal_catalog as mc_backend,
 )
 
 
@@ -43,6 +44,7 @@ class Backend:
     """Collection of the various backend classes for ease of distribution"""
     ingredients: il_backend.IngredientList
     pantry: vp_backend.VirtualPantry
+    meals: mc_backend.MealCatalog
 
 class Application:
     """The class that runs the application and handles any setup for the backend and database."""
@@ -57,6 +59,7 @@ class Application:
         self.backend = Backend(
             il_backend.IngredientList(),
             vp_backend.VirtualPantry(),
+            mc_backend.MealCatalog(),
         )
         self.interface = UserInterface(self.root, self.backend)
 

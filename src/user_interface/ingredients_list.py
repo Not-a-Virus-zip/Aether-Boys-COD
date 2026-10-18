@@ -75,7 +75,7 @@ class IngredientsList:
             self.ingr_display.delete(*range(len(self.ingr_list)))
         self.ingr_list = self.backend.load_ingredient_list()
         for i, ingr in enumerate(self.ingr_list):
-            self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type])# ui.fmt_qty(ingr.measurement_type)])
+            self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])# ui.fmt_qty(ingr.measurement_type)])
         self.virtual_pantry.refresh_pantry()
 
     def on_selection_change(self, tv: tk.Event) -> object:
@@ -125,7 +125,7 @@ class IngredientEditMenu(em.EditMenuWithSearcher):
         if ingredient is not None:
             name = ingredient.name
             tag = ingredient.tag
-            measure = str(ingredient.measurement_type)
+            measure = ingredient.measurement_type.name
         else:
             name = ""
             tag = ""

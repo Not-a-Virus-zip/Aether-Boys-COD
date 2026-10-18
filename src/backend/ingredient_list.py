@@ -30,6 +30,19 @@ class ExistingIngredient(Ingredient):
     modify = existing.modify
 
 
+def ingredient_from_db_tuple(db_tuple):
+    """Logic for constructing an ExistingIngredient from database information"""
+    id, name, tag, measure_id, measure_name = db_tuple
+    
+    existing.type_check(MeasureType, (measure_id, measure_name))
+    measure = MeasureType(measure_id, measure_name)
+    if tag is None:
+        tag = ''  # If tk tries to show None, it blows up :D
+
+    existing.type_check(ExistingIngredient, (name, tag, measure, id))
+    return ExistingIngredient(name, tag, measure, id)
+
+
 class IngredientList:
     # You can add arguments to the constructor if needed
     # (like if it needs to be passed some sort of DatabaseController class or anything else)
@@ -62,12 +75,8 @@ class IngredientList:
                              filter_value: str | None = None
                              ) -> list[ExistingIngredient]:
         """Get the current ingredient list"""
-        ing_list = []
-        for id, name, tag, measure in iq.run_select(filter_column=filter_column, filter_value=filter_value):
-            if tag is None:
-                tag = ''  # If tk tries to show None, it blows up :D
-            ing_list.append(ExistingIngredient(name, tag, measure, id))
-        return ing_list
+        raw_ingredients = iq.run_select(filter_column=filter_column, filter_value=filter_value)
+        return [ingredient_from_db_tuple(db_tuple) for db_tuple in raw_ingredients]
 
     def tags_in_use(self, query: str):
         """Get a list of unique tags in use"""
