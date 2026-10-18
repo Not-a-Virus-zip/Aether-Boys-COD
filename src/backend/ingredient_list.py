@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 import dataclasses
 from dataclasses import dataclass
-import pint
+
 from ..db_scripts.database_logic import (IngredientQuery as iq, MeasureTypeQuery as mq)
 from .units import MeasureType
+from . import existing
 
 # Note construct like so:
 #   Ingredient(5, "example name", "example tag", units.kilogram)
@@ -15,8 +17,8 @@ class Ingredient:
     tag: str
     measurement_type: MeasureType  # pint.Unit - Right now the MeasurementType database doesn't use Pint. Will change after demo
 
-    def modify(self, **kwargs) -> Ingredient:
-        return dataclasses.replace(self, **kwargs)
+    # this is a method btw
+    modify = dataclasses.replace
 
 @dataclass(frozen=True)
 class ExistingIngredient(Ingredient):
@@ -24,9 +26,8 @@ class ExistingIngredient(Ingredient):
     # feel free to add more fields if needed
     id: int
 
-    def modify(self, **kwargs) -> ExistingIngredient:
-        assert "id" not in kwargs, "Cannot modify id of existing ingredient"
-        return dataclasses.replace(self, **kwargs)
+    # this is a method btw
+    modify = existing.modify
 
 
 class IngredientList:
