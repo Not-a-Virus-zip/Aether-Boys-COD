@@ -12,6 +12,8 @@ from ..backend import (
     meal_catalog as mc_backend,
 )
 
+from ..backend.meal_catalog import Meal, ExistingMeal
+
 from .scrollable_treeview import ScrollableTreeview
 
 class MealCatalog:
@@ -74,7 +76,7 @@ class MealCatalog:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Add Meal",
-            lambda tl: MealEditMenu(self, tl, None).frame
+            lambda tl: AlternateMealEditMenu(self, tl).frame
         )
 
     def press_edit_button(self):
@@ -83,14 +85,14 @@ class MealCatalog:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Meal",
-            lambda tl: MealEditMenu(self, tl, selection).frame
+            lambda tl: AlternateMealEditMenu(self, tl, selection).frame
         )
 
 class MealEditMenu(em.EditMenu):
     # I think I might want to not use the EditMenu for this one tbh
-    def __init__(self, catalog: MealCatalog, parent: tk.Toplevel, selected_meal: mc_backend.ExistingMeal | None) -> None:
-        super().__init__(parent)
-        meal: mc_backend.ExistingMeal | mc_backend.Meal = selected_meal or mc_backend.Meal("", "", None, "", "", [])
+    def __init__(self, catalog: MealCatalog, container: tk.Toplevel, selected_meal: ExistingMeal | None) -> None:
+        super().__init__(container)
+        meal = selected_meal if selected_meal is not None else Meal("", "", None, "", "", ())
 
         self.image = self.insert("Image", em.Image(self.frame))
         self.name = self.insert("Name", em.Entry(self.frame, meal.name))
@@ -98,6 +100,69 @@ class MealEditMenu(em.EditMenu):
         self.ingredients = self.insert("Name", em.IngredientSelector(self.frame, meal.ingredients))
         self.recipe = self.insert("Name", em.Text(self.frame))
 
+class AlternateMealEditMenu(em.EditMenu):
+    def __init__(self, catalog: MealCatalog, container: tk.Toplevel, selected_meal: ExistingMeal | Meal = Meal("", "", None, "", "", ())) -> None:
+        super().__init__(container)
+        self.container = container
+        self.catalog = catalog
+        self.header_frame = ttk.Frame(self.frame)
+        self.header_frame.grid(row=self.claim_row(), column=0, columnspan=3, sticky="new")
+        self.image = ttk.Label(self.header_frame, image=ui.placeholder_image, padding=2, relief=tk.RIDGE)
+        self.image.grid(row=0, column=0)
+        mini_em = em.EditMenu(self.header_frame)
+        self.name_entry = mini_em.insert("Name", em.Entry(mini_em.frame, selected_meal.name)).elem
+        self.desc_entry = mini_em.insert("Description", em.Text(mini_em.frame, selected_meal.description)).elem
+        mini_em.frame.grid(row=0, column=1, sticky="news")
+
+        intermediate_row = self.claim_row()
+        self.frame.rowconfigure(intermediate_row, minsize=10)
+
+        self.ingredients_frame = ttk.Frame(self.frame)
+        self.ingredients_frame.grid(row=self.claim_row(), column=0, columnspan=3, sticky="new")
+        self.add_panel = IngrAddPanel(self.ingredients_frame)
+        self.ingredients_frame.columnconfigure(0, weight=1)
+        self.add_panel.grid(row=0, column=0, sticky="new")
+        self.current_panel = IngrInMeal(self.ingredients_frame)
+        self.ingredients_frame.columnconfigure(2, weight=1)
+        self.current_panel.grid(row=0, column=2, sticky="new")
+
+        self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
+        self.cancel_button.config(command=container.destroy)
+        self.save_button.config(command=self.save_and_close)
+
+    def search_ingr(self, query: str):
+        pass
+
+    def save_and_close(self):
+        
+        self.catalog.refresh_catalog()
+        self.container.destroy()
+
+class IngrInMeal:
+    def __init__(self, container: ttk.Frame) -> None:
+        self.list = ScrollableTreeview(container, columns=["name", "qty"], show="headings")
+        tv = self.list.treeview
+        tv.heading("name", text="Name")
+        tv.column("name", anchor="w", width=1)
+        tv.heading("qty", text="Quantity")
+        tv.column("qty", anchor="e", width=1)
+        # method
+        self.grid = self.list.grid
+
+class IngrAddPanel:
+    def __init__(self, container: ttk.Frame) -> None:
+        self.list = ScrollableTreeview(container, columns=["name", "tag", "units"], show="headings")
+
+        tv = self.list.treeview
+        tv.heading("name", text="Name")
+        tv.column("name", anchor="w", width=1)
+        tv.heading("tag", text="Tag")
+        tv.column("tag", anchor="e", width=1)
+        tv.heading("units", text="Units")
+        tv.column("units", anchor="e", width=1)
+
+        # method
+        self.grid = self.list.grid
 
 """
 ("Image", "placeholder_img", "image"),

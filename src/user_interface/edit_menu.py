@@ -18,6 +18,7 @@ def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Calla
     edit_menu.columnconfigure(0, weight=1)
     edit_menu.rowconfigure(0, weight=1)
     edit_frame.grid(row=0, column=0, sticky="nsew")
+    edit_menu.resizable(False, False)
     edit_menu.focus()
 
 @dataclass(slots=True)
@@ -34,32 +35,39 @@ class EditMenu:
     """
     frame: ttk.Frame
 
-    def __init__(self, parent: tk.Toplevel) -> None:
+    def __init__(self, parent: tk.Misc) -> None:
         self.frame = ttk.Frame(parent, padding=10)
         self.frame.columnconfigure(1, minsize=10)
         self.next_row = 1
 
     def insert[T: SharedData](self, name: str, elem: T) -> MenuField[T]:
+        tgt_row = self.claim_row()
         field_label = ttk.Label(self.frame, text=name)
-        field_label.grid(row=self.next_row, column=0, sticky="ne")
-        elem.insert(row=self.next_row, column=2)
+        field_label.grid(row=tgt_row, column=0, sticky="ne")
+        elem.insert(row=tgt_row, column=2)
         menu_field = MenuField(field_label, elem)
-        self.next_row += 1
+
         return menu_field
 
     def finish_construction(self, bottom_buttons: Iterable[tuple[str, Callable[[], None]] | str | int]) -> list[ttk.Button]:
-        finish_row = self.next_row
-        in_between_row = self.next_row + 1
-        bottom_buttons_row = self.next_row + 2
-        self.next_row += 3
-        self.frame.rowconfigure(finish_row, weight=1)
-        self.frame.rowconfigure(in_between_row, minsize=10)
+        """Add buttons at the bottom of the page (optional)"""
+        self.frame.rowconfigure(self.claim_row(), weight=1)
+        self.frame.rowconfigure(self.claim_row(), minsize=10)
         bottom_buttons_frame, buttons = ui.make_buttons(self.frame, bottom_buttons)
-        bottom_buttons_frame.grid(column=0, row=bottom_buttons_row, columnspan=5, sticky="ew")
+        bottom_buttons_frame.grid(column=0, row=self.claim_row(), columnspan=5, sticky="ew")
         return buttons
 
+    def claim_row(self) -> int:
+        """Reserve the next unclaimed row for use in the UI"""
+        claimed_row = self.next_row
+        self.next_row += 1
+        return claimed_row
+    
     def get_row_count(self) -> int:
         return self.next_row
+
+    def add_empty_rows(self, how_many: int):
+        self.next_row += how_many
 
 class EditMenuWithSearcher(EditMenu):
     """
@@ -189,8 +197,12 @@ class Button(SharedData):
 class Text(SharedData):
     input_field: scrtxt.ScrolledText
     
-    def __init__(self, container: ttk.Frame):
+    def __init__(self, container: ttk.Frame, initial_text: str = ""):
         self.input_field = scrtxt.ScrolledText(container, height=3)
+        current_entry_font = ttk.Style().lookup("TEntry", "font")
+        if current_entry_font is not None:
+            self.input_field.config(font=current_entry_font)
+        self.input_field.insert(tk.END, initial_text)
 
     def insert(self, row: int, column: int):
         self.input_field.grid(row=row, column=column, sticky="nw")
@@ -313,7 +325,7 @@ class Image(SharedData):
 
 class IngredientSelector(SharedData):
     ingredient_list: ScrollableTreeview
-    def __init__(self, container: ttk.Frame, initial_data: list):
+    def __init__(self, container: ttk.Frame, initial_data: tuple):
         self.frame = ttk.Frame(container)
         self.ingredient_list = ScrollableTreeview(self.frame, columns=("name", "qty"), show="headings", selectmode="browse")
 

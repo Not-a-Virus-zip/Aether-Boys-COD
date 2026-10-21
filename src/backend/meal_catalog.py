@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import dataclasses
+import typing
 
 import pint
 
@@ -21,7 +22,7 @@ class Meal:
     picture: None # TODO: Figure out picture handling
     description: str
     recipe: str
-    ingredients: list[tuple[il.ExistingIngredient, pint.Quantity]]
+    ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]
 
     # this is a method btw
     modify = dataclasses.replace
@@ -45,13 +46,10 @@ class MealCatalog:
 def placeholder_get_meals_impl_for_ui_testing(raw_query) -> list[ExistingMeal]:
     meals = []
     for id, name, tag, _picture, description, recipe in raw_query:
-        args = name, null_to_blank(tag), None, *nulls_to_blanks(description, recipe), [], id
+        args = name, denull(tag), None, denull(description), denull(recipe), (), id
         existing.type_check(ExistingMeal, args)
         meals.append(ExistingMeal(*args))
     return meals
 
-def null_to_blank(s):
+def denull(s):
     return "" if s is None else s
-
-def nulls_to_blanks(*s):
-    return tuple(map(null_to_blank, s))

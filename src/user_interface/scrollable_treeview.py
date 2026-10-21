@@ -20,10 +20,10 @@ class ScrollableTreeview:
         self.treeview.grid(row=0, column=0, sticky="nsew")
         self.scrollbar.grid(row=0, column=1, sticky="ns")
 
-    def grid(self, **kwargs): # pyright: ignore[reportRedeclaration]
-        self.frame.grid(**kwargs)
+        # FYI this is a method
+        self.grid = self.frame.grid
 
-    if typing.TYPE_CHECKING: # typing.TYPE_CHECKING == False (but the editor pretends it is True)
+    if typing.TYPE_CHECKING: # typing.TYPE_CHECKING is False but the editor/typechecker acts like it's True
         # I made this so my editor will remind me what the parameters of ScrollableTreeview are.
         # The type annotations are copied from ttk.Treeview.__init__ since that's
         # where ScrollableTreeview will send any keyword arguments it receives.
@@ -42,7 +42,4 @@ class ScrollableTreeview:
                 style: str = "", takefocus: bool | Callable[[str], bool | None] | Literal[0] | Literal[1] | Literal[''] = True,
                 xscrollcommand: str | Callable[[float, float], object] = "",
                 yscrollcommand: str | Callable[[float, float], object] = "") -> None:
-            pass
-
-        def grid(self, cnf: typing.Mapping[str, typing.Any] | None = {}, *, column: int = ..., columnspan: int = ..., row: int = ..., rowspan: int = ..., ipadx: float | str = ..., ipady: float | str = ..., padx: float | str | tuple[float | str, float | str] = ..., pady: float | str | tuple[float | str, float | str] = ..., sticky: str | list[str] | tuple[str, ...] = ..., in_: tk.Misc = ..., **kw: typing.Any) -> None: # pyright: ignore[reportArgumentType]
             pass
