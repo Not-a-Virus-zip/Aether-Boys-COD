@@ -7,7 +7,7 @@ from typing import Callable, Iterable
 import pint
 
 from . import user_interface_impl as ui
-
+from .scrollable_treeview import ScrollableTreeview
 from ..backend.units import units
 
 def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
@@ -133,7 +133,7 @@ class EventEditor:
 
 class SharedData:
     def insert(self, row: int, column: int):
-        raise NotImplementedError
+        raise NotImplementedError(f"`insert` not implemented for {type(self).__name__}")
 
 class Searcher:
     def insert(self, row: int, column: int, search_menu: EditMenuWithSearcher):
@@ -144,6 +144,7 @@ class Searcher:
 
 class Display(SharedData):
     display: ttk.Label
+    
     def __init__(self, container: ttk.Frame, initial_text: str):
         self.display = ttk.Label(container, text=initial_text)
 
@@ -207,6 +208,7 @@ class Text(SharedData):
 
 class QuantityEntry(SharedData):
     input_field: ttk.Entry
+
     def __init__(self, container: ttk.Frame, quantity: pint.Quantity):
         self.input_field = ttk.Entry(container)
         self.input_field.insert(tk.END, ui.fmt_qty(quantity))
@@ -247,6 +249,7 @@ class DbSearchOptions[T](Searcher):
         self.translation_fn = translation_fn
         self.display_header = display_header
         self.entries = []
+        # self.search_menu is set when self.insert is called
         self.selected = None
 
         self.search_bar.config(textvariable=self.text_var)
@@ -299,10 +302,33 @@ class DbSearchOptions[T](Searcher):
         self.set_text(self.translation_fn(self.selected), skip_text_update_callback=True)
 
 class Image(SharedData):
-    def __init__(self, container: ttk.Frame): pass
+    image: ttk.Label
+
+    def __init__(self, container: ttk.Frame):
+        self.image = ttk.Label(container, image=ui.placeholder_image, padding=2, relief=tk.RIDGE)
+    
+    def insert(self, row: int, column: int):
+        self.image.grid(row=row, column=column, sticky="nw")
+
 
 class IngredientSelector(SharedData):
-    def __init__(self, container: ttk.Frame): pass
+    ingredient_list: ScrollableTreeview
+    def __init__(self, container: ttk.Frame, initial_data: list):
+        self.frame = ttk.Frame(container)
+        self.ingredient_list = ScrollableTreeview(self.frame, columns=("name", "qty"), show="headings", selectmode="browse")
+
+        tv = self.ingredient_list.treeview
+        tv.heading("name", text="Name")
+        tv.column("name", anchor="w", width=1)
+        tv.heading("qty", text="Quantity")
+        tv.column("qty", anchor="e", width=1)
+
+        self.frame.columnconfigure(0, weight=1)
+        self.frame.rowconfigure(0, weight=1)
+        self.ingredient_list.grid(row=0, column=0, sticky="news")
+
+    def insert(self, row: int, column: int):
+        self.frame.grid(row=row, column=column, sticky="news")
 
 class ListDisplay(SharedData):
     def __init__(self, container: ttk.Frame): pass

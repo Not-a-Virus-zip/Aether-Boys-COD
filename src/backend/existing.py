@@ -22,5 +22,8 @@ def type_check[T: IsDataclass](dataclass: type[T], values: tuple[typing.Any, ...
     """
     hints = typing.get_type_hints(dataclass.__init__)
     for (field_name, expected_type), actual_value in zip(hints.items(), values):
+        non_generic = typing.get_origin(expected_type)
+        if non_generic is not None:
+            expected_type = non_generic
         if not isinstance(actual_value, expected_type):
             raise TypeError(f"Expected {expected_type}, found {type(actual_value)} for {dataclass.__name__}.{field_name}")

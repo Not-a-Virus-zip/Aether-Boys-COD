@@ -7,6 +7,7 @@ from . import (
     user_interface_impl as ui,
     virtual_pantry as vp,
 )
+from .scrollable_treeview import ScrollableTreeview
 from ..backend import (
     ingredient_list as il_backend,
     virtual_pantry as vp_backend,
@@ -21,7 +22,7 @@ class IngredientsList:
 
     name: str = "Ingredients"
     frame: ttk.Frame
-    ingr_display: ttk.Treeview
+    ingr_display: ScrollableTreeview
     ingr_list: list[ExistingIngredient]
 
     add_button: ttk.Button
@@ -33,27 +34,21 @@ class IngredientsList:
         self.virtual_pantry = virtual_pantry
 
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
-        list_frame = ttk.Frame(ingredients_frame)
-        list_frame.columnconfigure(0, weight=1)
-        list_frame.rowconfigure(0, weight=1)
-        self.ingr_display = ingr_display = ttk.Treeview(list_frame, columns=["name", "tag", "units"], show="headings")
-        scrollbar = ttk.Scrollbar(list_frame, command=ingr_display.yview)
-        ingr_display.config(yscrollcommand=scrollbar.set)
+        self.ingr_display = ScrollableTreeview(ingredients_frame, columns=["name", "tag", "units"], show="headings")
 
         # Note: for some reason, setting width=1 causes all columns distribute evenly. I don't know why.
-        ingr_display.heading("name", text="Name")
-        ingr_display.column("name", anchor="w", width=1)
-        ingr_display.heading("tag", text="Tag")
-        ingr_display.column("tag", anchor="e", width=1)
-        ingr_display.heading("units", text="Units")
-        ingr_display.column("units", anchor="e", width=1)
+        tv = self.ingr_display.treeview
+        tv.heading("name", text="Name")
+        tv.column("name", anchor="w", width=1)
+        tv.heading("tag", text="Tag")
+        tv.column("tag", anchor="e", width=1)
+        tv.heading("units", text="Units")
+        tv.column("units", anchor="e", width=1)
 
         self.ingr_list = []
         self.refresh_ingredients()
 
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        ingr_display.grid(row=0, column=0, sticky="news")
-        list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
+        self.ingr_display.grid(row=0, column=0, columnspan=2, sticky="news")
         ingredients_frame.rowconfigure(0, weight=1)
         ingredients_frame.columnconfigure(0, weight=1)
         ingredients_frame.columnconfigure(1, weight=1)
@@ -68,24 +63,24 @@ class IngredientsList:
         )
         self.edit_button.config(state=tk.DISABLED)
         bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
-        ingr_display.bind("<<TreeviewSelect>>", self.on_selection_change)
+        tv.bind("<<TreeviewSelect>>", self.on_selection_change)
 
     def refresh_ingredients(self):
         if len(self.ingr_list) > 0:
-            self.ingr_display.delete(*range(len(self.ingr_list)))
+            self.ingr_display.treeview.delete(*range(len(self.ingr_list)))
         self.ingr_list = self.backend.load_ingredient_list()
         for i, ingr in enumerate(self.ingr_list):
-            self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])# ui.fmt_qty(ingr.measurement_type)])
+            self.ingr_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])# ui.fmt_qty(ingr.measurement_type)])
         self.virtual_pantry.refresh_pantry()
 
     def on_selection_change(self, tv: tk.Event) -> object:
         self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
 
     def is_ingr_selected(self) -> bool:
-        return len(self.ingr_display.selection()) != 0
+        return len(self.ingr_display.treeview.selection()) != 0
 
     def get_selected(self) -> ExistingIngredient | None:
-        selection = self.ingr_display.selection()
+        selection = self.ingr_display.treeview.selection()
         return None if len(selection) == 0 else self.ingr_list[int(selection[0])]
     
     def press_add_button(self):

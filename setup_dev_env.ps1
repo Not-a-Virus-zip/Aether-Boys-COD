@@ -1,5 +1,5 @@
 Write-Output "Creating .venv"
-python3 -m venv .venv
+python3 -m venv .venv --upgrade-deps
 Write-Output "Activating .venv"
 .\.venv\Scripts\Activate.ps1
 Write-Output "Installing packages"

@@ -8,6 +8,7 @@ from . import (
     edit_menu as em,
     user_interface_impl as ui,
 )
+from .scrollable_treeview import ScrollableTreeview
 from ..backend import (
     virtual_pantry as vp_backend,
     ingredient_list as il_backend,
@@ -23,7 +24,7 @@ class VirtualPantry:
     pantry_backend: vp_backend.VirtualPantry
     ing_backend: il_backend.IngredientList
     frame: ttk.Frame
-    pantry_display: ttk.Treeview
+    pantry_display: ScrollableTreeview
     pantry_contents: list[tuple[ExistingIngredient, pint.Quantity]]
     add_button: ttk.Button
     edit_button: ttk.Button
@@ -34,43 +35,41 @@ class VirtualPantry:
         self.frame = ttk.Frame(parent, name="virtual pantry", padding=20)
         self.frame.columnconfigure(0, weight=1)
         self.frame.rowconfigure(0, weight=1)
-        self.pantry_display = pantry_disp = ttk.Treeview(self.frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
-        scrollbar = ttk.Scrollbar(self.frame, command=pantry_disp.yview)
-        pantry_disp.config(yscrollcommand=scrollbar.set)
-        pantry_disp.heading("ingr", text="Ingredient")
-        pantry_disp.heading("qty", text="Quantity")
-        pantry_disp.column("ingr", anchor="w")
-        pantry_disp.column("qty", anchor="e")
+        self.pantry_display = ScrollableTreeview(self.frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
+        
+        tv = self.pantry_display.treeview
+        tv.heading("ingr", text="Ingredient")
+        tv.column("ingr", anchor="w")
+        tv.heading("qty", text="Quantity")
+        tv.column("qty", anchor="e")
 
         self.pantry_contents = []
         self.refresh_pantry()
-        
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        pantry_disp.grid(row=0, column=0, sticky="news")
+        self.pantry_display.grid(row=0, column=0, sticky="news")
         self.frame.grid(row=0, column=0, sticky="news")
         buttons_frame, (self.add_button, self.edit_button) = \
             ui.make_buttons(self.frame, ("Add New", "Edit Selected"), button_weight=1)
         self.add_button.config(command=self.press_add_button)
         self.edit_button.config(command=self.press_edit_button, state=tk.DISABLED)
-        buttons_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+        buttons_frame.grid(row=1, column=0, sticky="ew")
 
-        pantry_disp.bind("<<TreeviewSelect>>", self._on_selection_change)
+        tv.bind("<<TreeviewSelect>>", self._on_selection_change)
 
     def refresh_pantry(self):
         if len(self.pantry_contents) > 0:
-            self.pantry_display.delete(*range(len(self.pantry_contents)))
+            self.pantry_display.treeview.delete(*range(len(self.pantry_contents)))
         self.pantry_contents = self.pantry_backend.load_virtual_pantry_contents()
         for i, (ingr, qty) in enumerate(self.pantry_contents):
-            self.pantry_display.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
+            self.pantry_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
 
     def _on_selection_change(self, tv: tk.Event) -> object:
         self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
     
     def is_ingr_selected(self) -> bool:
-        return len(self.pantry_display.selection()) != 0
+        return len(self.pantry_display.treeview.selection()) != 0
 
     def get_selected(self) -> tuple[ExistingIngredient, pint.Quantity] | None:
-        selection = self.pantry_display.selection()
+        selection = self.pantry_display.treeview.selection()
         return None if len(selection) == 0 else self.pantry_contents[int(selection[0])]
 
     def press_add_button(self):
