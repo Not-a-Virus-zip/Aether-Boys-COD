@@ -30,7 +30,7 @@ class ExistingIngredient(Ingredient):
     modify = existing.modify
 
 
-def ingredient_from_db_tuple(db_tuple):
+def ingredient_from_db_tuple(db_tuple: tuple[int, str, str, int, str]) -> ExistingIngredient:
     """Logic for constructing an ExistingIngredient from database information"""
     id, name, tag, measure_id, measure_name = db_tuple
     
