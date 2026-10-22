@@ -191,6 +191,8 @@ class IngrAddPanel:
         self.search.grid(row=0, column=0, sticky="ew")
 
         self.current_ingrs = []
+        
+        self.sort_asc = True
         self.current_sort = "ingredient"
         self.current_query = ""
 
@@ -216,9 +218,12 @@ class IngrAddPanel:
         if new_query is not None:
             self.current_query = new_query
         if new_sort is not None:
-            self.current_sort = new_sort
+            if self.current_sort == new_sort:
+                self.sort_asc = not self.sort_asc
+            else:
+                self.current_sort = new_sort
 
-        new_list = self.ing_backend.load_ingredient_list("ingredient", self.current_query, sort_mode=self.current_sort)
+        new_list = self.ing_backend.load_ingredient_list("ingredient", self.current_query, sort_mode=self.current_sort, asc=self.sort_asc)
         if len(self.current_ingrs) > 0:
             self.ingr_display.treeview.delete(*range(len(self.current_ingrs)))
         self.current_ingrs = new_list

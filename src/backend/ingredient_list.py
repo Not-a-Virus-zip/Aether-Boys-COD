@@ -77,9 +77,10 @@ class IngredientList:
                              filter_column: str | None = None, 
                              filter_value: str | None = None,
                              sort_mode: str | None = None,
+                             asc: bool = True,
                              ) -> list[ExistingIngredient]:
         """Get the current ingredient list"""
-        raw_ingredients = iq.run_select(filter_column=filter_column, filter_value=filter_value, order=sort_mode)
+        raw_ingredients = iq.run_select(filter_column=filter_column, filter_value=filter_value, order=sort_mode, asc=asc)
         return [ingredient_from_db_tuple(db_tuple) for db_tuple in raw_ingredients]
 
     def tags_in_use(self, query: str):
