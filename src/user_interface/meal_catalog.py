@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
+from typing import Literal
 
 from . import (
     user_interface_impl as ui,
@@ -135,7 +136,7 @@ class AlternateMealEditMenu(em.EditMenu):
         pass
 
     def save_and_close(self):
-        
+
         self.catalog.refresh_catalog()
         self.container.destroy()
 
@@ -144,26 +145,26 @@ class IngrInMeal:
         
         self.frame = ttk.Frame(container, padding=2)
         self.ingr_quantities = ScrollableTreeview(self.frame, columns=["name", "qty"], show="headings")
-        self.frame.columnconfigure(0, weight=1)
+        self.frame.columnconfigure(1, weight=1, pad=4)
         self.frame.rowconfigure(1, weight=1)
         self.ingr_quantities.grid(row=1, column=0, columnspan=2, sticky="new")
 
         self.search_var = tk.StringVar(self.frame)
         self.quantity_editor = ttk.Entry(self.frame, textvariable=self.search_var)
 
-        self.quantity_editor.grid(row=0, column=0, sticky="ew")
+        self.quantity_editor.grid(row=0, column=1, sticky="ew")
         
         self.current_ingrs = []
         
-        self.add_button = ttk.Button(self.frame, text="Add Ingredient")
-        self.add_button.grid(row=0, column=1)
+        self.qty_lbl = ttk.Label(self.frame, text="Quantity",)
+        self.qty_lbl.grid(row=0, column=0)
 
         tv = self.ingr_quantities.treeview
         tv.heading("name", text="Name")
         tv.column("name", anchor="w", width=1)
         tv.heading("qty", text="Quantity")
         tv.column("qty", anchor="e", width=1)
-        
+
         # method
         self.grid = self.frame.grid
 
@@ -190,31 +191,43 @@ class IngrAddPanel:
         self.search.grid(row=0, column=0, sticky="ew")
 
         self.current_ingrs = []
+        self.current_sort = "ingredient"
+        self.current_query = ""
 
         self.add_button = ttk.Button(self.frame, text="Add Ingredient")
         self.add_button.grid(row=0, column=1)
         self.frame.grid(row=0, column=1)
         tv = self.ingr_display.treeview
-        tv.heading("name", text="Name")
+        tv.heading("name", text="Name", command=lambda: self.update_ingr_list(new_sort="ingredient"))
         tv.column("name", anchor="w", width=1)
-        tv.heading("tag", text="Tag")
+        tv.heading("tag", text="Tag", command=lambda: self.update_ingr_list(new_sort="tag"))
         tv.column("tag", anchor="e", width=1)
-        tv.heading("units", text="Units")
+        tv.heading("units", text="Units", command=lambda: self.update_ingr_list(new_sort="unit"))
         tv.column("units", anchor="e", width=1)
 
         tv.bind("<<TreeviewSelect>>", self._on_selection_update)
 
-        self.fill_ingr_list(ing_backend.load_ingredient_list())
+        self.update_ingr_list()
 
         # method
         self.grid = self.frame.grid
 
-    def fill_ingr_list(self, new_list: list[il_backend.ExistingIngredient]) -> None:
+    def update_ingr_list(self, new_query: str | None = None, new_sort: Literal["ingredient", "tag", "unit"] | None = None):
+        if new_query is not None:
+            self.current_query = new_query
+        if new_sort is not None:
+            self.current_sort = new_sort
+
+        new_list = self.ing_backend.load_ingredient_list("ingredient", self.current_query, sort_mode=self.current_sort)
         if len(self.current_ingrs) > 0:
             self.ingr_display.treeview.delete(*range(len(self.current_ingrs)))
         self.current_ingrs = new_list
         for i, ingr in enumerate(self.current_ingrs):
             self.ingr_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])
+        
+
+    # def fill_ingr_list(self, new_list: list[il_backend.ExistingIngredient]) -> None:
+        
 
 
     def _on_selection_update(self, event: tk.Event):
@@ -226,5 +239,4 @@ class IngrAddPanel:
         self.add_button.config(text=text)
 
     def _on_search_text_update(self, *_):
-        ingredients = self.ing_backend.load_ingredient_list("ingredient", self.search_var.get().strip())
-        self.fill_ingr_list(ingredients)
+        self.update_ingr_list(new_query=self.search_var.get().strip())

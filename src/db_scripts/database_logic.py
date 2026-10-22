@@ -15,7 +15,7 @@ class IngredientQuery(SelectDB):
                    'LEFT JOIN MeasureType as mt ' \
                        'ON i.measureID = mt.measureID '
     accepted_filters = {'ingredient': 'i.name', 'tag': 'i.tag', 'id': 'i.ingredientID', 'unit': 'mt.name'}
-    accepted_sorts = {'ingredient': 'i.name', 'tag': 'i.name', 'date': 'i.ingredientID', 'unit': 'mt.name'}
+    accepted_sorts = {'ingredient': 'i.name', 'tag': 'i.tag', 'date': 'i.ingredientID', 'unit': 'mt.name'}
 
     # Variables needed for DELETE
     delete_table_name = 'Ingredient'

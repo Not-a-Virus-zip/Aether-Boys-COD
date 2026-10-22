@@ -73,12 +73,13 @@ class IngredientList:
         """Search for possible ingredient units"""
         return [str(name) for _, name, *_ in mq.run_select(filter_column="name", filter_value=query)]
 
-    def load_ingredient_list(self, 
+    def load_ingredient_list(self,
                              filter_column: str | None = None, 
-                             filter_value: str | None = None
+                             filter_value: str | None = None,
+                             sort_mode: str | None = None,
                              ) -> list[ExistingIngredient]:
         """Get the current ingredient list"""
-        raw_ingredients = iq.run_select(filter_column=filter_column, filter_value=filter_value)
+        raw_ingredients = iq.run_select(filter_column=filter_column, filter_value=filter_value, order=sort_mode)
         return [ingredient_from_db_tuple(db_tuple) for db_tuple in raw_ingredients]
 
     def tags_in_use(self, query: str):
