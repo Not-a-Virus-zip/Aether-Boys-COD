@@ -7,6 +7,18 @@ import typing
 class IsDataclass(typing.Protocol):
     __dataclass_fields__: typing.ClassVar[dict[str, dataclasses.Field[typing.Any]]]
 
+def type_check_self(self):
+    cls = type(self)
+    hints = typing.get_type_hints(cls)
+    for field_name, expected_type in hints.items():
+        actual_value = getattr(self, field_name)
+        non_generic = typing.get_origin(expected_type)
+        if non_generic is not None:
+            expected_type = non_generic
+        if not isinstance(actual_value, expected_type):
+            raise TypeError(f"Expected {expected_type}, found {type(actual_value)} for {cls.__name__}.{field_name}")
+        
+    
 
 # The syntax `[T: IsDataclass]` tells the type-checker that modify is a *generic* function.
 # When calling this function, the `self` parameter can be any type that follows the `IsDataclass` protocol,

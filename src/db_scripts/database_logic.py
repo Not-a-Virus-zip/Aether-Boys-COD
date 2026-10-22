@@ -71,7 +71,7 @@ class IngredientQuery(SelectDB):
 class VirtualPantryQuery(SelectDB):
 
     # Variables needed for SELECT
-    select_query = 'SELECT vp.ingredientID, i.name, vp.qtyHave, mt.Abbreviation ' \
+    select_query = 'SELECT vp.ingredientID, i.name, vp.qtyHave, mt.measureID, mt.name, mt.Abbreviation ' \
                   'FROM VirtualPantry as vp ' \
                   'JOIN MeasureType as mt ' \
                       'ON vp.measureID = mt.measureID ' \

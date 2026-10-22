@@ -2,4 +2,5 @@
 
 import src.user_interface as user_interface
 
-user_interface.launch_ui()
+if __name__ == "__main__":
+    user_interface.launch_ui()

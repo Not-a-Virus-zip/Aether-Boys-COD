@@ -19,6 +19,8 @@ class Ingredient:
 
     # this is a method btw
     modify = dataclasses.replace
+    __post_init__ = existing.type_check_self
+
 
 @dataclass(frozen=True)
 class ExistingIngredient(Ingredient):
@@ -28,6 +30,7 @@ class ExistingIngredient(Ingredient):
 
     # this is a method btw
     modify = existing.modify
+    __post_init__ = existing.type_check_self
 
 
 def ingredient_from_db_tuple(db_tuple: tuple[int, str, str, int, str]) -> ExistingIngredient:

@@ -37,20 +37,18 @@ class VirtualPantry:
 
     def update_vpantry_entry(self, updated_ingr: il.ExistingIngredient, new_quant: pint.Quantity):
         """Update the ingredient quantity stored in the virtual pantry, replacing the previous quantity (if one existed)"""
-        success = db.VirtualPantryQuery.run_update(str(updated_ingr.id), new_quant.magnitude, into_measure_type_id(new_quant.units))
-        assert success
+        db.VirtualPantryQuery.run_update(str(updated_ingr.id), new_quant.magnitude, into_measure_type_id(new_quant.units))
 
     def add_vpantry_entry(self, updated_ingr: il.ExistingIngredient, new_quant: pint.Quantity):
         """Update the ingredient quantity stored in the virtual pantry, replacing the previous quantity (if one existed)"""
-        success = db.VirtualPantryQuery.run_insert(str(updated_ingr.id), new_quant.magnitude, into_measure_type_id(new_quant.units))
-        assert success
+        db.VirtualPantryQuery.run_insert(str(updated_ingr.id), new_quant.magnitude, into_measure_type_id(new_quant.units))
 
     def load_virtual_pantry_contents(self) -> list[tuple[il.ExistingIngredient, pint.Quantity]]:
         """Get the current contents of the virtual pantry"""
         contents = []
-        for ing_id, name, qty, ing_units in db.VirtualPantryQuery.run_select():
-            ingr = il.ExistingIngredient(name, "", ing_units, ing_id)
-            quantity = qty * units.get_units(ing_units)
+        for ing_id, name, qty, ms_id, ms_name, ms_abbrev in db.VirtualPantryQuery.run_select():
+            ingr = il.ExistingIngredient(name, "", units.MeasureType(ms_id, ms_name), ing_id)
+            quantity = qty * units.get_units(ms_name)
             contents.append((ingr, quantity))
         return contents
 

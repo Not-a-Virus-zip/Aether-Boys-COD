@@ -26,6 +26,7 @@ class Meal:
 
     # this is a method btw
     modify = dataclasses.replace
+    __post_init__ = existing.type_check_self
 
 # when connecting the database to the backend, put data from the database into this class
 @dataclass(frozen=True)
@@ -34,6 +35,7 @@ class ExistingMeal(Meal):
 
     # this is a method btw
     modify = existing.modify
+    __post_init__ = existing.type_check_self
 
 class MealCatalog:
     def get_meals(self) -> list[ExistingMeal]:
