@@ -10,6 +10,7 @@ from . import (
 
 from ..backend import (
     meal_catalog as mc_backend,
+    ingredient_list as il_backend,
 )
 
 from ..backend.meal_catalog import Meal, ExistingMeal
@@ -119,11 +120,11 @@ class AlternateMealEditMenu(em.EditMenu):
 
         self.ingredients_frame = ttk.Frame(self.frame)
         self.ingredients_frame.grid(row=self.claim_row(), column=0, columnspan=3, sticky="new")
-        self.add_panel = IngrAddPanel(self.ingredients_frame)
-        self.ingredients_frame.columnconfigure(0, weight=1)
+        self.add_panel = IngrAddPanel(self.ingredients_frame, catalog.backend.ingredients)
+        self.ingredients_frame.columnconfigure(0, weight=1, uniform="panels")
         self.add_panel.grid(row=0, column=0, sticky="new")
         self.current_panel = IngrInMeal(self.ingredients_frame)
-        self.ingredients_frame.columnconfigure(2, weight=1)
+        self.ingredients_frame.columnconfigure(2, weight=1, uniform="panels")
         self.current_panel.grid(row=0, column=2, sticky="new")
 
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
@@ -140,20 +141,60 @@ class AlternateMealEditMenu(em.EditMenu):
 
 class IngrInMeal:
     def __init__(self, container: ttk.Frame) -> None:
-        self.list = ScrollableTreeview(container, columns=["name", "qty"], show="headings")
-        tv = self.list.treeview
+        
+        self.frame = ttk.Frame(container, padding=2)
+        self.ingr_quantities = ScrollableTreeview(self.frame, columns=["name", "qty"], show="headings")
+        self.frame.columnconfigure(0, weight=1)
+        self.frame.rowconfigure(1, weight=1)
+        self.ingr_quantities.grid(row=1, column=0, columnspan=2, sticky="new")
+
+        self.search_var = tk.StringVar(self.frame)
+        self.quantity_editor = ttk.Entry(self.frame, textvariable=self.search_var)
+
+        self.quantity_editor.grid(row=0, column=0, sticky="ew")
+        
+        self.current_ingrs = []
+        
+        self.add_button = ttk.Button(self.frame, text="Add Ingredient")
+        self.add_button.grid(row=0, column=1)
+
+        tv = self.ingr_quantities.treeview
         tv.heading("name", text="Name")
         tv.column("name", anchor="w", width=1)
         tv.heading("qty", text="Quantity")
         tv.column("qty", anchor="e", width=1)
+        
         # method
-        self.grid = self.list.grid
+        self.grid = self.frame.grid
 
 class IngrAddPanel:
-    def __init__(self, container: ttk.Frame) -> None:
-        self.list = ScrollableTreeview(container, columns=["name", "tag", "units"], show="headings")
+    ing_backend: il_backend.IngredientList
+    frame: ttk.Frame
+    ingr_display: ScrollableTreeview
+    search_var: tk.StringVar
+    search: ttk.Entry
+    current_ingrs: list[il_backend.ExistingIngredient]
+    add_button: ttk.Button
 
-        tv = self.list.treeview
+    def __init__(self, container: ttk.Frame, ing_backend: il_backend.IngredientList) -> None:
+        self.ing_backend = ing_backend
+        self.frame = ttk.Frame(container, padding=2)
+        self.ingr_display = ScrollableTreeview(self.frame, columns=["name", "tag", "units"], show="headings")
+        self.frame.columnconfigure(0, weight=1)
+        self.frame.rowconfigure(1, weight=1)
+        self.ingr_display.grid(row=1, column=0, columnspan=2, sticky="new")
+
+        self.search_var = tk.StringVar(self.frame)
+        self.search = ttk.Entry(self.frame, textvariable=self.search_var)
+        self.search_var.trace_add("write", self._on_search_text_update)
+        self.search.grid(row=0, column=0, sticky="ew")
+
+        self.current_ingrs = []
+
+        self.add_button = ttk.Button(self.frame, text="Add Ingredient")
+        self.add_button.grid(row=0, column=1)
+        self.frame.grid(row=0, column=1)
+        tv = self.ingr_display.treeview
         tv.heading("name", text="Name")
         tv.column("name", anchor="w", width=1)
         tv.heading("tag", text="Tag")
@@ -161,56 +202,29 @@ class IngrAddPanel:
         tv.heading("units", text="Units")
         tv.column("units", anchor="e", width=1)
 
+        tv.bind("<<TreeviewSelect>>", self._on_selection_update)
+
+        self.fill_ingr_list(ing_backend.load_ingredient_list())
+
         # method
-        self.grid = self.list.grid
+        self.grid = self.frame.grid
 
-"""
-("Image", "placeholder_img", "image"),
-("Name", "Foobar Salad", "entry"),
-("Description", "Insert Description Here", "text"),
-("Ingredients", "Name Quantity\nFoo,10 lbs\nBar,1 gal", "list display"),
-("Add Ingredients", "Lettuce,2 heads", "add ingredient"),
-("", "", "separating bar"),
-("Recipe (Optional)", "Insert Recipe Here", "text"),
+    def fill_ingr_list(self, new_list: list[il_backend.ExistingIngredient]) -> None:
+        if len(self.current_ingrs) > 0:
+            self.ingr_display.treeview.delete(*range(len(self.current_ingrs)))
+        self.current_ingrs = new_list
+        for i, ingr in enumerate(self.current_ingrs):
+            self.ingr_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])
 
 
-def make_meal_catalogue(parent: tk.Tk | ttk.Frame):
-    meal_frame = ttk.Frame(parent, name="meal_catalogue", padding=20)
-    list_frame = ttk.Frame(meal_frame)
-    list_frame.columnconfigure(0, weight=1)
-    list_frame.rowconfigure(0, weight=1)
-    meal_list = ttk.Treeview(list_frame, columns=["name", "desc"], show="headings")
-    scrollbar = ttk.Scrollbar(list_frame, command=meal_list.yview)
-    meal_list.config(yscrollcommand=scrollbar.set)
-    meal_list.heading("name", text="Name")
-    meal_list.heading("desc", text="Description")
-    meal_list.column("name", anchor="w")
-    meal_list.column("desc", anchor="w")
-    example_meals = [(f"Test Meal {i}", f"Lorem Ipsum Test Description {i}") for i in range(20)]
-    for name, desc in example_meals:
-        meal_list.insert("", "end", text="", values=[name, desc])
-    scrollbar.grid(row=0, column=1, sticky="ns")
-    meal_list.grid(row=0, column=0, sticky="news")
-    list_frame.grid(row=0, column=0, columnspan=2, sticky="news")
-    meal_frame.rowconfigure(0, weight=1)
-    meal_frame.columnconfigure(0, weight=1)
-    meal_frame.columnconfigure(1, weight=1)
+    def _on_selection_update(self, event: tk.Event):
+        selected = self.ingr_display.treeview.selection()
+        selected_count = len(selected)
+        text = "Add Ingredient" if selected_count < 2 else "Add Ingredients"
+        state = "disabled" if selected_count < 1 else "!disabled"
+        self.add_button.state((state,))
+        self.add_button.config(text=text)
 
-    edit_meal_menu = generate_edit_menu(
-        [
-            ("Image", "placeholder_img", "image"),
-            ("Name", "Foobar Salad", "entry"),
-            ("Description", "Insert Description Here", "text"),
-            ("Ingredients", "Name Quantity\nFoo,10 lbs\nBar,1 gal", "list display"),
-            ("Add Ingredients", "Lettuce,2 heads", "add ingredient"),
-            ("", "", "separating bar"),
-            ("Recipe (Optional)", "Insert Recipe Here", "text"),
-        ],
-        ["Cancel", 1, "Save Meal"],
-    )
-    for col, name in enumerate(["Add New", "Edit Selected"]):
-        button = ttk.Button(meal_frame, text=name)
-        button.grid(row=1, column=col, sticky="ew")
-        button.config(command=lambda: em.show_edit_menu(parent.winfo_toplevel(), "Edit Meal", edit_meal_menu))
-    return DummyInterface("Meal Catalog", meal_frame)
-"""
+    def _on_search_text_update(self, *_):
+        ingredients = self.ing_backend.load_ingredient_list("ingredient", self.search_var.get().strip())
+        self.fill_ingr_list(ingredients)
