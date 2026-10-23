@@ -151,14 +151,15 @@ class DetailedMealQuery(SelectDB):
                    picture: str | None = None, 
                    description: str | None = None, 
                    recipe : str | None = None
-                   ):
+                   ) -> int:
         with get_connection() as con:
-            try:
-                cur = con.cursor()
-                cur.execute('INSERT INTO Meal(name, tag, picture, description, recipe) VALUES (?, ?, ?, ?, ?);', 
-                            (name, tag, picture, description, recipe))
-            except sql.IntegrityError as e: 
-                print({e})
+            cur = con.cursor()
+            cur.execute('INSERT INTO Meal(name, tag, picture, description, recipe) VALUES (?, ?, ?, ?, ?);', 
+                        (name, tag, picture, description, recipe))
+            meal_id = cur.lastrowid
+            if meal_id is None:
+                raise ValueError('Insert into Meal did not give a row ID')
+            return meal_id
         
     @staticmethod
     def run_update(meal_id: int,
@@ -191,6 +192,7 @@ class MealIngredientsQuery():
             if removed is not None:
                 cur.executemany('DELETE FROM MealIngredient WHERE mealID = ? AND ingredientID = ?', [(meal_id, ing_id) for ing_id in removed],)
 
+            # Inserts new and updates old
             cur.executemany(
                 'INSERT INTO MealIngredient (mealID, ingredientID, qty, measureID) ' \
                 'VALUES (?,?,?,?) ' \

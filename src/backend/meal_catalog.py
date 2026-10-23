@@ -83,11 +83,7 @@ class MealCatalog:
     def update_meal(self, modified: ExistingDetailedMeal) -> None:
         """This method updates an existing meal"""
         # Ingredient Check
-        measure_ids = dt.load_measure_ids()
-        if modified.ingredients is not None:
-            ingredients = {ingredient.id: (measure.magnitude, bt.pint_to_measure_ids(measure_ids, measure)) for ingredient, measure in modified.ingredients}
-        else:
-            ingredients = dict()
+        ingredients = self._get_ing_dict(modified)
 
         # Update db
         db.DetailedMealQuery.run_update(modified.id, modified.name, bt.renull(modified.tag), bt.renull(modified.picture), 
@@ -96,7 +92,17 @@ class MealCatalog:
 
     def create_meal(self, new_meal: DetailedMeal) -> None:
         """This method creates a new meal"""
-        pass
+        ingredients = self._get_ing_dict(new_meal)
 
+        new_id = db.DetailedMealQuery.run_insert(new_meal.name, bt.renull(new_meal.tag), bt.renull(new_meal.picture), 
+                                                 bt.renull(new_meal.description), bt.renull(new_meal.recipe))
+        db.MealIngredientsQuery.run_update(new_id, ingredients)
 
+    def _get_ing_dict(self, detailed_meal: DetailedMeal) -> dict:
+        measure_ids = dt.load_measure_ids()
+        if detailed_meal.ingredients is not None:
+            ingredients = {ingredient.id: (measure.magnitude, bt.pint_to_measure_ids(measure_ids, measure)) for ingredient, measure in detailed_meal.ingredients}
+        else:
+            ingredients = dict()
+        return ingredients
 
