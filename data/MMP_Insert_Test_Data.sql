@@ -53,8 +53,8 @@ INSERT INTO Meal (name, tag, picture, description, recipe) VALUES
     ('Beef Tacos', 'Dinner', NULL,
      'Seasoned ground beef tacos with cheese and salsa.',
      '1. Brown beef with onion. 2. Warm tortillas. 3. Fill with beef, cheese, and salsa.'),
-    ('Plain Buttered Rice', NULL, NULL, NULL, NULL);
-    ('Hamburger', NULL, NULL, NULL, NULL)
+    ('Plain Buttered Rice', NULL, NULL, NULL, NULL),
+    ('Hamburger', NULL, NULL, NULL, NULL);
 
 -- ============================================================
 -- MEALINGREDIENT
