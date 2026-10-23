@@ -14,7 +14,7 @@ from ..backend import (
     ingredient_list as il_backend,
 )
 
-from ..backend.meal_catalog import Simple_Meal, ExistingMeal
+from ..backend.meal_catalog import ExistingSimpleMeal, ExistingDetailedMeal, DetailedMeal
 
 from .scrollable_treeview import ScrollableTreeview
 
@@ -27,6 +27,8 @@ class MealCatalog:
     meal_display: ScrollableTreeview
     add_button: ttk.Button
     edit_button: ttk.Button
+    catalog_contents: list[ExistingSimpleMeal]
+
 
     def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
         self.backend = backend
@@ -60,7 +62,7 @@ class MealCatalog:
     def refresh_catalog(self):
         if len(self.catalog_contents) > 0:
             self.meal_display.treeview.delete(*range(len(self.catalog_contents)))
-        self.catalog_contents = self.backend.meals.get_meals()
+        self.catalog_contents = self.backend.meals.get_simple_meals()
         for i, meal in enumerate(self.catalog_contents):
             self.meal_display.treeview.insert("", "end", id=i, text="", values=[meal.name,meal.description])
         
@@ -70,7 +72,7 @@ class MealCatalog:
     def is_meal_selected(self) -> bool:
         return len(self.meal_display.treeview.selection()) != 0
         
-    def get_selected(self) -> mc_backend.ExistingMeal | None:
+    def get_selected(self) -> mc_backend.ExistingSimpleMeal | None:
         selection = self.meal_display.treeview.selection()
         return None if len(selection) == 0 else self.catalog_contents[int(selection[0])]
 
@@ -78,32 +80,30 @@ class MealCatalog:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Add Meal",
-            lambda tl: AlternateMealEditMenu(self, tl).frame
+            lambda tl: MealEditMenu(self, tl).frame
         )
 
     def press_edit_button(self):
         selection = self.get_selected()
         assert selection is not None, "Edit button should be disabled when nothing is selected"
+        full_meal = self.backend.meals.get_detailed_meal(selection.id)
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Meal",
-            lambda tl: AlternateMealEditMenu(self, tl, selection).frame
+            lambda tl: MealEditMenu(self, tl, full_meal).frame
         )
 
+empty_detailed_meal = DetailedMeal(
+    name="",
+    tag="",
+    description="",
+    picture=None,
+    recipe="",
+    ingredients=()
+)
+
 class MealEditMenu(em.EditMenu):
-    # I think I might want to not use the EditMenu for this one tbh
-    def __init__(self, catalog: MealCatalog, container: tk.Toplevel, selected_meal: ExistingMeal | None) -> None:
-        super().__init__(container)
-        meal = selected_meal if selected_meal is not None else Simple_Meal("", "", None, "", "", ())
-
-        self.image = self.insert("Image", em.Image(self.frame))
-        self.name = self.insert("Name", em.Entry(self.frame, meal.name))
-        self.description = self.insert("Name", em.Text(self.frame))
-        self.ingredients = self.insert("Name", em.IngredientSelector(self.frame, meal.ingredients))
-        self.recipe = self.insert("Name", em.Text(self.frame))
-
-class AlternateMealEditMenu(em.EditMenu):
-    def __init__(self, catalog: MealCatalog, container: tk.Toplevel, selected_meal: ExistingMeal | Simple_Meal = Simple_Meal("", "", None, "", "", ())) -> None:
+    def __init__(self, catalog: MealCatalog, container: tk.Toplevel, selected_meal: ExistingDetailedMeal | DetailedMeal = empty_detailed_meal) -> None:
         super().__init__(container)
         self.container = container
         self.catalog = catalog
