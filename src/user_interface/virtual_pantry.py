@@ -8,7 +8,7 @@ from . import (
     edit_menu as em,
     user_interface_impl as ui,
 )
-from .scrollable_treeview import ScrollableTreeview
+from .treeview_utilities import ScrollableTreeview, AutoSorter
 from ..backend import (
     virtual_pantry as vp_backend,
     ingredient_list as il_backend,
@@ -25,6 +25,7 @@ class VirtualPantry:
     ing_backend: il_backend.IngredientList
     frame: ttk.Frame
     pantry_display: ScrollableTreeview
+    auto_sorter: AutoSorter
     pantry_contents: list[tuple[ExistingIngredient, pint.Quantity]]
     add_button: ttk.Button
     edit_button: ttk.Button
@@ -36,7 +37,7 @@ class VirtualPantry:
         self.frame.columnconfigure(0, weight=1)
         self.frame.rowconfigure(0, weight=1)
         self.pantry_display = ScrollableTreeview(self.frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
-        
+        self.auto_sorter = AutoSorter(self.pantry_display.treeview, self._autosorter_command)
         tv = self.pantry_display.treeview
         tv.heading("ingr", text="Ingredient")
         tv.column("ingr", anchor="w")
@@ -56,9 +57,16 @@ class VirtualPantry:
         tv.bind("<<TreeviewSelect>>", self._on_selection_change)
 
     def refresh_pantry(self):
+        self.auto_sorter.refresh()
+
+    def _autosorter_command(self, query: str, column: str, asc: bool):
         if len(self.pantry_contents) > 0:
             self.pantry_display.treeview.delete(*range(len(self.pantry_contents)))
         self.pantry_contents = self.pantry_backend.load_virtual_pantry_contents()
+        if column == "qty":
+            self.pantry_contents.sort(key=lambda t: t[1].magnitude, reverse=not asc)
+        elif not asc:
+            self.pantry_contents.reverse()
         for i, (ingr, qty) in enumerate(self.pantry_contents):
             self.pantry_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
 

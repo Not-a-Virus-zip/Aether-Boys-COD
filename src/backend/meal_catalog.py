@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 import dataclasses
-import typing
+from typing import Literal
 
 import pint
 
@@ -53,10 +53,10 @@ class ExistingDetailedMeal(DetailedMeal):
 
 
 class MealCatalog:
-    def get_simple_meals(self) -> list[ExistingSimpleMeal]:
+    def get_simple_meals(self, sort_column: str = "name", asc: bool = True) -> list[ExistingSimpleMeal]:
         return [
             ExistingSimpleMeal(name, denull(tag), denull(description), id)
-            for id, name, tag, description in db.SimpleMealQuery.run_select()
+            for id, name, tag, description in db.SimpleMealQuery.run_select(order=sort_column, asc=asc)
         ]
 
 

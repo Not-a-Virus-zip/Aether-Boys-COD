@@ -7,7 +7,7 @@ from . import (
     user_interface_impl as ui,
     virtual_pantry as vp,
 )
-from .scrollable_treeview import ScrollableTreeview
+from .treeview_utilities import ScrollableTreeview, AutoSorter
 from ..backend import (
     ingredient_list as il_backend,
     virtual_pantry as vp_backend,
@@ -23,6 +23,7 @@ class IngredientsList:
     name: str = "Ingredients"
     frame: ttk.Frame
     ingr_display: ScrollableTreeview
+    auto_sorter: AutoSorter
     ingr_list: list[ExistingIngredient]
 
     add_button: ttk.Button
@@ -34,16 +35,16 @@ class IngredientsList:
         self.virtual_pantry = virtual_pantry
 
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
-        self.ingr_display = ScrollableTreeview(ingredients_frame, columns=["name", "tag", "units"], show="headings")
-
-        # Note: for some reason, setting width=1 causes all columns distribute evenly. I don't know why.
+        self.ingr_display = ScrollableTreeview(ingredients_frame, columns=["name", "tag", "unit"], show="headings")
+        self.auto_sorter = AutoSorter(self.ingr_display.treeview, self._autosorter_command)
         tv = self.ingr_display.treeview
+         # width=0 lets the treeview widget auto-determine the appropriate width
         tv.heading("name", text="Name")
-        tv.column("name", anchor="w", width=1)
+        tv.column("name", anchor="w", width=0)
         tv.heading("tag", text="Tag")
-        tv.column("tag", anchor="e", width=1)
-        tv.heading("units", text="Units")
-        tv.column("units", anchor="e", width=1)
+        tv.column("tag", anchor="e", width=0)
+        tv.heading("unit", text="Units")
+        tv.column("unit", anchor="e", width=0)
 
         self.ingr_list = []
         self.refresh_ingredients()
@@ -65,13 +66,16 @@ class IngredientsList:
         bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
         tv.bind("<<TreeviewSelect>>", self.on_selection_change)
 
-    def refresh_ingredients(self):
+    def _autosorter_command(self, query: str, column: str, asc: bool):
         if len(self.ingr_list) > 0:
             self.ingr_display.treeview.delete(*range(len(self.ingr_list)))
-        self.ingr_list = self.backend.load_ingredient_list()
+        self.ingr_list = self.backend.load_ingredient_list(sort_mode=column, asc=asc)
         for i, ingr in enumerate(self.ingr_list):
             self.ingr_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])# ui.fmt_qty(ingr.measurement_type)])
         self.virtual_pantry.refresh_pantry()
+
+    def refresh_ingredients(self):
+        self.auto_sorter.refresh()
 
     def on_selection_change(self, tv: tk.Event) -> object:
         self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)

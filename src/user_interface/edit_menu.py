@@ -7,7 +7,7 @@ from typing import Callable, Iterable
 import pint
 
 from . import user_interface_impl as ui
-from .scrollable_treeview import ScrollableTreeview
+from .treeview_utilities import ScrollableTreeview
 from ..backend.units import units
 
 def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
