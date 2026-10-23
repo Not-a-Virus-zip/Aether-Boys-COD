@@ -19,8 +19,8 @@ from ..db_scripts import (
 @dataclass(frozen=True)
 class SimpleMeal:
     name: str
-    tag: str
-    description: str
+    tag: str | None
+    description: str | None
 
     # this is a method btw
     modify = dataclasses.replace
@@ -31,9 +31,9 @@ class SimpleMeal:
 # data passed back from the front-end will be come in instances of this class
 @dataclass(frozen=True)
 class DetailedMeal(SimpleMeal):
-    picture: None # TODO: Figure out picture handling
-    recipe: str
-    ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]
+    picture: str | None # TODO: Figure out picture handling
+    recipe: str | None
+    ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...] | None
 
 # when connecting the database to the backend, put data from the database into this class
 @dataclass(frozen=True)
