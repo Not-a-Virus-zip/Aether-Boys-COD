@@ -14,7 +14,7 @@ from . import existing
 class Ingredient:
     # feel free to add more fields if needed
     name: str
-    tag: str
+    tag: str | None
     measurement_type: MeasureType  # pint.Unit - Right now the MeasurementType database doesn't use Pint. Will change after demo
 
     # this is a method btw

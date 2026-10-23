@@ -12,11 +12,22 @@ def type_check_self(self):
     hints = typing.get_type_hints(cls)
     for field_name, expected_type in hints.items():
         actual_value = getattr(self, field_name)
-        non_generic = typing.get_origin(expected_type)
-        if non_generic is not None:
-            expected_type = non_generic
-        if not isinstance(actual_value, expected_type):
+        if not _matches(actual_value, expected_type):
             raise TypeError(f"Expected {expected_type}, found {type(actual_value)} for {cls.__name__}.{field_name}")
+
+def _matches(value, expected_type) -> bool:
+    if expected_type is None:
+        expected_type = type(None)
+
+    origin = typing.get_origin(expected_type)
+
+    # This part unpacks Union types to allow for optional fields
+    if origin is typing.Union:
+        return any(_matches(value, real_type) for real_type in typing.get_args(expected_type))  # get_args acts like get_origin, but it unwraps what's inside
+
+    if origin is not None:
+        expected_type = origin
+    return isinstance(value, expected_type)
         
     
 
@@ -34,8 +45,5 @@ def type_check[T: IsDataclass](dataclass: type[T], values: tuple[typing.Any, ...
     """
     hints = typing.get_type_hints(dataclass.__init__)
     for (field_name, expected_type), actual_value in zip(hints.items(), values):
-        non_generic = typing.get_origin(expected_type)
-        if non_generic is not None:
-            expected_type = non_generic
-        if not isinstance(actual_value, expected_type):
+        if not _matches(actual_value, expected_type):
             raise TypeError(f"Expected {expected_type}, found {type(actual_value)} for {dataclass.__name__}.{field_name}")
