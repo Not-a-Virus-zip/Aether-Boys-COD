@@ -1,8 +1,6 @@
 # Purpose: Generic methods that all database logic will need
 import sqlite3 as sql
 from pathlib import Path
-# from src.db_scripts.database_logic import TagQuery as tq
-# from src.db_scripts.database_logic import MeasureTypeQuery as mtq
 
 # (typing imports)
 from typing import ClassVar
@@ -96,6 +94,11 @@ class SelectDB:
         else:
             order_sql += 'DESC '
         return order_sql
+
+def load_measure_ids() -> dict[str, int]:
+    with get_connection() as con:
+        cur = con.cursor()
+        return dict(cur.execute('SELECT name, measureID FROM MeasureType'))
 
 
 # Errors for logic

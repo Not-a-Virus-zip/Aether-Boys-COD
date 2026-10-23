@@ -145,7 +145,6 @@ class DetailedMealQuery(SelectDB):
     delete_table_name = 'Meal'
     delete_id_name = 'mealID'
 
-    # TODO: This is not done. I'm getting distracted with making errors
     @staticmethod
     def run_insert(name: str, 
                    tag: str | None = None, 
@@ -162,7 +161,7 @@ class DetailedMealQuery(SelectDB):
                 print({e})
         
     @staticmethod
-    def run_update(meal_id: str,
+    def run_update(meal_id: int,
                    name: str,
                    tag: str | None = None, 
                    picture: str | None = None, 
@@ -175,3 +174,27 @@ class DetailedMealQuery(SelectDB):
                             (name, tag, picture, description, recipe, meal_id))
         except sql.IntegrityError as e:
             raise QueryUpdateError(name)
+
+class MealIngredientsQuery():
+    @staticmethod
+    def run_update(meal_id: int,
+                   ingredients: dict):
+        """ingredients: {ing_id: (qty, measure_id)}"""
+        with get_connection() as con:
+            cur = con.cursor()
+            rows = cur.execute('SELECT ingredientID FROM MealIngredient WHERE mealID = ?', (meal_id,)).fetchall()
+            existing_ing = {r[0] for r in rows}  # This gives a set of unique ing_id
+
+            removed = existing_ing - ingredients.keys()  # Gives us the difference of ids (thanks discrete math)
+
+            # Removes missing ingredients (They were removed by user)
+            if removed is not None:
+                cur.executemany('DELETE FROM MealIngredient WHERE mealID = ? AND ingredientID = ?', [(meal_id, ing_id) for ing_id in removed],)
+
+            cur.executemany(
+                'INSERT INTO MealIngredient (mealID, ingredientID, qty, measureID) ' \
+                'VALUES (?,?,?,?) ' \
+                'ON CONFLICT (mealID, ingredientID) ' \
+                'DO UPDATE SET qty = excluded.qty, measureID = excluded.measureID ',
+                [(meal_id, ing_id, qty, measure_id) for ing_id, (qty, measure_id) in ingredients.items()]
+            )
