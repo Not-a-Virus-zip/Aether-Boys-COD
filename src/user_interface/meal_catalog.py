@@ -14,7 +14,7 @@ from ..backend import (
     ingredient_list as il_backend,
 )
 
-from ..backend.meal_catalog import Meal, ExistingMeal
+from ..backend.meal_catalog import Simple_Meal, ExistingMeal
 
 from .scrollable_treeview import ScrollableTreeview
 
@@ -94,7 +94,7 @@ class MealEditMenu(em.EditMenu):
     # I think I might want to not use the EditMenu for this one tbh
     def __init__(self, catalog: MealCatalog, container: tk.Toplevel, selected_meal: ExistingMeal | None) -> None:
         super().__init__(container)
-        meal = selected_meal if selected_meal is not None else Meal("", "", None, "", "", ())
+        meal = selected_meal if selected_meal is not None else Simple_Meal("", "", None, "", "", ())
 
         self.image = self.insert("Image", em.Image(self.frame))
         self.name = self.insert("Name", em.Entry(self.frame, meal.name))
@@ -103,7 +103,7 @@ class MealEditMenu(em.EditMenu):
         self.recipe = self.insert("Name", em.Text(self.frame))
 
 class AlternateMealEditMenu(em.EditMenu):
-    def __init__(self, catalog: MealCatalog, container: tk.Toplevel, selected_meal: ExistingMeal | Meal = Meal("", "", None, "", "", ())) -> None:
+    def __init__(self, catalog: MealCatalog, container: tk.Toplevel, selected_meal: ExistingMeal | Simple_Meal = Simple_Meal("", "", None, "", "", ())) -> None:
         super().__init__(container)
         self.container = container
         self.catalog = catalog

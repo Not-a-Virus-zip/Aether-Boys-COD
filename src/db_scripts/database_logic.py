@@ -117,13 +117,30 @@ class MeasureTypeQuery(SelectDB):
     accepted_filters = {'name': 'name','id': 'measureID'}
     accepted_sorts = {'name': 'name', 'date': 'measureID'}
 
+class SimpleMealQuery(SelectDB):
 
-class MealQuery(SelectDB):
-
-    select_query = 'SELECT * ' \
+    select_query = 'SELECT mealID, name, tag, description ' \
                    'FROM Meal '
-    accepted_filters = {'name' : 'name', 'id': 'mealID', 'tag': 'tag'}
-    accepted_sorts = {'name' : 'name', 'date': 'mealID', 'tag': 'tag'}
+    accepted_filters = {'name': 'name', 'id': 'id', 'tag': 'tag'}
+    accepted_sorts = {'name': 'name', 'id': 'id', 'tag': 'tag'}
+
+
+class DetailedMealQuery(SelectDB):
+
+    select_query = 'SELECT m.mealID, m.name, m.tag, m.picture, m.description, m.recipe, ' \
+                   'mi.ingredientID, i.name, i.tag, i.measureID, mti.name, ' \
+                   'mi.qty, mi.measureID, mtm.name ' \
+                   'FROM Meal as m '\
+                   'LEFT JOIN MealIngredient as mi '\
+                       'on mi.mealID = m.mealID '\
+                   'LEFT JOIN Ingredient as i '\
+                       'ON i.ingredientID = mi.ingredientID '\
+                   'LEFT JOIN MeasureType as mtm '\
+                       'ON mtm.measureID = mi.measureID '\
+                   'LEFT JOIN MeasureType as mti '\
+                       'ON mti.measureID = i.measureID '
+    accepted_filters = {'name' : 'm.name', 'id': 'm.mealID', 'tag': 'm.tag'}
+    accepted_sorts = {'name' : 'm.name', 'date': 'm.mealID', 'tag': 'm.tag'}
 
     delete_table_name = 'Meal'
     delete_id_name = 'mealID'
