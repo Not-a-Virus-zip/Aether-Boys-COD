@@ -1,10 +1,10 @@
 import pint
 
 
-def denull(s):
+def denull(s: str | None) -> str:
     return "" if s is None else s
 
-def renull(s):
+def renull(s: str) -> str | None:
     return None if s == '' else s
 
 def pint_to_measure_ids(measure_ids: dict[str, int], pint_var: pint.Quantity) -> int:

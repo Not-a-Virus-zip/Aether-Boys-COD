@@ -22,8 +22,8 @@ from ..db_scripts import (
 @dataclass(frozen=True)
 class SimpleMeal:
     name: str
-    tag: str | None
-    description: str | None
+    tag: str
+    description: str
 
     # this is a method btw
     modify = dataclasses.replace
@@ -34,9 +34,9 @@ class SimpleMeal:
 # data passed back from the front-end will be come in instances of this class
 @dataclass(frozen=True)
 class DetailedMeal(SimpleMeal):
-    picture: str | None # TODO: Figure out picture handling
-    recipe: str | None
-    ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...] | None
+    picture: str # TODO: Figure out picture handling
+    recipe: str
+    ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]
 
     modify = dataclasses.replace
 
@@ -78,7 +78,7 @@ class MealCatalog:
                 ing = il.ExistingIngredient(ing_name, bt.denull(ing_tag), units.MeasureType(ing_measure_id, ing_measure_name), ing_id)
                 ingredients.append((ing, units.units.Quantity(mi_qty, mi_measure_name)))
 
-        return ExistingDetailedMeal(**asdict(meal), picture=picture, recipe=bt.denull(recipe), ingredients=tuple(ingredients))
+        return ExistingDetailedMeal(**asdict(meal), picture=bt.denull(picture), recipe=bt.denull(recipe), ingredients=tuple(ingredients))
 
     def update_meal(self, modified: ExistingDetailedMeal) -> None:
         """This method updates an existing meal"""

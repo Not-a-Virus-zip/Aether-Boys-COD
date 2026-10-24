@@ -23,10 +23,10 @@ class IngredientQuery(SelectDB):
 
     # Stores new data in the database
     @staticmethod
-    def run_insert(ingredient_name: str, tag: str, measure_id: int):
-        valid_check = IngredientQuery.run_select(filter_column='unit', filter_value=measure_id)
+    def run_insert(ingredient_name: str, tag: str | None, measure_id: int | str):
+        valid_check = IngredientQuery.run_select(filter_column='unit', filter_value=str(measure_id))
         if valid_check is None:
-            raise QueryInvalidFK()
+            raise QueryInvalidFK('Measure Type', measure_id)
         with get_connection() as con:
             cur = con.cursor()
             cur.execute("INSERT INTO Ingredient(name, tag, measureID) VALUES (?, ?, ?)", 
@@ -35,10 +35,10 @@ class IngredientQuery(SelectDB):
 
     # Updates an existing entry
     @staticmethod
-    def run_update(ingredient_id: int, ingredient_name: str, tag: str, measure_id: int):
-        valid_check = IngredientQuery.run_select(filter_column='unit', filter_value=measure_id)
+    def run_update(ingredient_id: int, ingredient_name: str, tag: str | None, measure_id: int | str):
+        valid_check = IngredientQuery.run_select(filter_column='unit', filter_value=str(measure_id))
         if valid_check is None:
-            raise QueryInvalidFK('Measure Type')
+            raise QueryInvalidFK('Measure Type', measure_id)
         try: 
             with get_connection() as con:
                 cur = con.cursor()

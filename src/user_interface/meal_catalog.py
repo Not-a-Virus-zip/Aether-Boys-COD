@@ -104,7 +104,7 @@ empty_detailed_meal = DetailedMeal(
     name="",
     tag="",
     description="",
-    picture=None,
+    picture="",
     recipe="",
     ingredients=()
 )
@@ -114,7 +114,7 @@ class MealEditMenu(em.EditMenu):
         super().__init__(container)
         self.container = container
         self.catalog = catalog
-        selected_meal.ingredients
+        self.meal = selected_meal
         self.header_frame = ttk.Frame(self.frame)
         self.header_frame.grid(row=self.claim_row(), column=0, columnspan=3, sticky="new")
         self.image = ttk.Label(self.header_frame, image=ui.placeholder_image, padding=2, relief=tk.RIDGE)
@@ -142,13 +142,28 @@ class MealEditMenu(em.EditMenu):
         self.cancel_button.config(command=container.destroy)
         self.save_button.config(command=self.save_and_close)
 
+    def collect_changes_into_meal(self) -> ExistingDetailedMeal | DetailedMeal:
+        return self.meal.modify(
+            name=self.name_entry.get_text(),
+            # tag=,
+            description=self.desc_entry.get_text(),
+            # picture=,
+            # recipe=,
+            ingredients=tuple(self.current_ingredients_panel.get_ingredients())
+        )
+
     def save_and_close(self):
+        match self.collect_changes_into_meal():
+            case ExistingDetailedMeal() as meal:
+                self.catalog.backend.meals.update_meal(meal)
+            case DetailedMeal() as meal:
+                self.catalog.backend.meals.create_meal(meal)
         self.catalog.refresh_catalog()
         self.container.destroy()
 
 class IngrCurrentPanel:
     def __init__(self, frame: ttk.Frame, starting_ingredients: Iterable[tuple[ExistingIngredient, pint.Quantity]]) -> None:
-        self.ingr_quantities = ttk.Treeview(frame, columns=["name", "qty"], show="headings")
+        self.ingr_quantities = ttk.Treeview(frame, columns=["name", "qty"], show="headings", selectmode="browse")
         scrollbar = ttk.Scrollbar(frame)
         link_treeview_to_scrollbar(self.ingr_quantities, scrollbar)
         self.ingr_quantities.grid(row=1, column=2, sticky="new")
@@ -175,15 +190,27 @@ class IngrCurrentPanel:
         tv.heading("qty", text="Quantity")
         tv.column("qty", anchor="e", width=1)
 
+        tv.bind("<<TreeviewSelect>>", self._on_selection_update)
+
         self.auto_sorter = AutoSorter(self.ingr_quantities, self._autosorter_command)
         self.update_quantity_list()
+
+    def _on_selection_update(self, event: tk.Event):
+        selection = self.ingr_quantities.selection()
+        if len(selection) == 0:
+            return
+        selected_entry = self.current_ingrs[int(selection[0])]
+
+
+    def get_ingredients(self) -> list[tuple[ExistingIngredient, pint.Quantity]]:
+        return self.current_ingrs
 
     def update_quantity_list(self):
         self.auto_sorter.refresh()
 
     def _autosorter_command(self, query: str, column: str, asc: bool):
         if self.display_len > 0:
-            self.ingr_quantities.delete(*range(len(self.current_ingrs)))
+            self.ingr_quantities.delete(*range(self.display_len))
 
         key = {
             "name": lambda t: t[0].name,
@@ -197,7 +224,7 @@ class IngrCurrentPanel:
     def add_ingredients(self, ingrs: tuple[ExistingIngredient, ...]):
         assert self.current_ingredient_ids.isdisjoint(i.id for i in ingrs)
         self.current_ingredient_ids.update(i.id for i in ingrs)
-        self.current_ingrs.extend((ing, 0 * ing.measurement_type.pint_unit) for ing in ingrs)
+        self.current_ingrs.extend((ing, 1 * ing.measurement_type.pint_unit) for ing in ingrs)
         self.update_quantity_list()
 
     def is_ingr_not_in_meal(self, ing: ExistingIngredient) -> bool:

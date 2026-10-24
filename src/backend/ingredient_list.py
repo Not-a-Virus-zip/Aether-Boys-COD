@@ -5,7 +5,10 @@ from dataclasses import dataclass
 
 from ..db_scripts.database_logic import (IngredientQuery as iq, MeasureTypeQuery as mq)
 from .units import MeasureType
-from . import existing
+from . import (
+    existing,
+    backend_tools as bt,
+)
 
 # Note construct like so:
 #   Ingredient(5, "example name", "example tag", units.kilogram)
@@ -14,7 +17,7 @@ from . import existing
 class Ingredient:
     # feel free to add more fields if needed
     name: str
-    tag: str | None
+    tag: str
     measurement_type: MeasureType  # pint.Unit - Right now the MeasurementType database doesn't use Pint. Will change after demo
 
     # this is a method btw
@@ -33,17 +36,14 @@ class ExistingIngredient(Ingredient):
     __post_init__ = existing.type_check_self
 
 
-def ingredient_from_db_tuple(db_tuple: tuple[int, str, str, int, str]) -> ExistingIngredient:
+def ingredient_from_db_tuple(db_tuple: tuple[int, str, str | None, int, str]) -> ExistingIngredient:
     """Logic for constructing an ExistingIngredient from database information"""
     id, name, tag, measure_id, measure_name = db_tuple
     
-    existing.type_check(MeasureType, (measure_id, measure_name))
     measure = MeasureType(measure_id, measure_name)
     if tag is None:
         tag = ''  # If tk tries to show None, it blows up :D
-
-    existing.type_check(ExistingIngredient, (name, tag, measure, id))
-    return ExistingIngredient(name, tag, measure, id)
+    return ExistingIngredient(name, bt.denull(tag), measure, id)
 
 
 class IngredientList:
@@ -58,15 +58,15 @@ class IngredientList:
 
     def update_ingredient(self, modified: ExistingIngredient):
         """Store a modified version of an ingredient, replacing the previous version"""
-        if f'{modified.tag}'.strip() == '':
-            modified = modified.modify(tag = None)
-        iq.run_update(modified.id, modified.name, modified.tag, modified.measurement_type.id)
+        # if f'{modified.tag}'.strip() == '':
+        #     modified = modified.modify(tag = None)
+        iq.run_update(modified.id, modified.name, bt.renull(modified.tag), modified.measurement_type.id)
 
     def create_ingredient(self, name: str, tag: str, measure_type: int):
         """Create a new ingredient"""
-        if f'{tag}'.strip() == '':
-            tag = None
-        iq.run_insert(name, tag, measure_type)
+        # if f'{tag}'.strip() == '':
+        #     tag = None
+        iq.run_insert(name, bt.renull(tag)  , measure_type)
 
     # Pulls up a list of available MeasurementTypes(?)
     def search_ingredient_units(self, query: str) -> list[str]:  #TODO: list[pint.Unit] 
