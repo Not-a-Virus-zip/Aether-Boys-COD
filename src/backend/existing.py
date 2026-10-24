@@ -13,7 +13,7 @@ def type_check_self(self):
     for field_name, expected_type in hints.items():
         actual_value = getattr(self, field_name)
         if not _matches(actual_value, expected_type):
-            raise TypeError(f"Expected {expected_type}, found {type(actual_value)} for {cls.__name__}.{field_name}")
+            raise TypeError(f"Expected {expected_type}, found {type(actual_value)} for {cls.__name__}.{field_name}\n (on object {self})")
 
 def _matches(value, expected_type) -> bool:
     if expected_type is None:

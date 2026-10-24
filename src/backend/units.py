@@ -5,6 +5,10 @@ from ..db_scripts.database_logic import MeasureTypeQuery as mtq
 from . import existing
 units: pint.UnitRegistry = pint.UnitRegistry()
 
+def interpret_quantity(quantity: str) -> pint.Quantity:
+    # try:
+    return units.parse_expression(quantity)
+    
 
 def get_units(unit_name: str) -> pint.Unit:
     try:

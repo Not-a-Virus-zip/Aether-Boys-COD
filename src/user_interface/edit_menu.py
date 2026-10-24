@@ -8,7 +8,7 @@ import pint
 
 from . import user_interface_impl as ui
 from .treeview_utilities import ScrollableTreeview
-from ..backend.units import units
+from ..backend import units
 
 def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
     edit_menu = tk.Toplevel(root)
@@ -62,6 +62,11 @@ class EditMenu:
         claimed_row = self.next_row
         self.next_row += 1
         return claimed_row
+
+    def insert_spacer_row(self, height: int) -> int:
+        spacer_row = self.claim_row()
+        self.frame.rowconfigure(spacer_row, minsize=height)
+        return spacer_row
     
     def get_row_count(self) -> int:
         return self.next_row
@@ -81,6 +86,7 @@ class EditMenuWithSearcher(EditMenu):
         super().__init__(parent)
         self.frame.columnconfigure(3, minsize=10)
         self.search_display = ttk.Treeview(self.frame, columns=["display"], show="headings")
+        self.search_display.heading("display", text="...")
         self.db_search_scrollbar = ttk.Scrollbar(self.frame, command=self.search_display.yview)
         self.search_display.config(yscrollcommand=self.db_search_scrollbar.set)
         self.search_display.state(("disabled",))
@@ -204,6 +210,9 @@ class Text(SharedData):
             self.input_field.config(font=current_entry_font)
         self.input_field.insert(tk.END, initial_text)
 
+        # method
+        self.direct_grid = self.input_field.grid
+
     def insert(self, row: int, column: int):
         self.input_field.grid(row=row, column=column, sticky="nw")
 
@@ -215,7 +224,7 @@ class Text(SharedData):
         self.input_field.insert(tk.END, text)
     
     def get_text(self):
-        return self.input_field.get("0.0", tk.END)
+        return self.input_field.get("0.0", tk.END).removesuffix("\n")
 
 
 class QuantityEntry(SharedData):
@@ -236,7 +245,7 @@ class QuantityEntry(SharedData):
         return self.input_field.get()
 
     def get_quantity(self) -> pint.Quantity:
-        parsed = units.parse_expression(self.get_text())
+        parsed = units.interpret_quantity(self.get_text())
         return parsed
 
 def identity(n): return n
