@@ -106,3 +106,7 @@ class MealCatalog:
             ingredients = dict()
         return ingredients
 
+    def delete_meal(self, meal_id: int) -> None:
+        """Deletes a meal from the database, no restrictions (yet)"""
+        db.DetailedMealQuery.run_delete(meal_id)
+

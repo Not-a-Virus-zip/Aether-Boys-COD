@@ -1,6 +1,9 @@
 # Purpose: Get data to and from the database.
 import sqlite3 as sql
-from .database_tools import SelectDB, get_connection, QueryUpdateError, QueryInvalidFK
+from .database_tools import SelectDB, get_connection
+from errors import (
+    QueryInvalidFK,
+)
 
 
 type Name = str
@@ -80,12 +83,12 @@ class VirtualPantryQuery(SelectDB):
     accepted_filters = {'ingredient': 'i.name', 'id': 'vp.ingredientID'}
     accepted_sorts = {'ingredient': 'i.name', 'date': 'vp.ingredientID'}
 
-    delete_table_name = 'Virtural Pantry'
+    delete_table_name = 'VirtualPantry'
     delete_id_name = 'ingredientID'
 
     # Stores new data in the database
     @staticmethod
-    def run_insert(ingredient_id: str, qty_owned: float, measure_id: str):
+    def run_insert(ingredient_id: int, qty_owned: float, measure_id: str):
         try:
             with get_connection() as con:
                 cur = con.cursor()
@@ -97,7 +100,7 @@ class VirtualPantryQuery(SelectDB):
 
     # Updates an existing entry
     @staticmethod
-    def run_update(ingredient_id: str, qty: str, measure_id: str):
+    def run_update(ingredient_id: int, qty: str, measure_id: str):
         try:
             with get_connection() as con:
                 cur = con.cursor()
@@ -168,13 +171,11 @@ class DetailedMealQuery(SelectDB):
                    picture: str | None = None, 
                    description: str | None = None, 
                    recipe : str | None = None):
-        try:
-            with get_connection() as con:
-                cur = con.cursor()
-                cur.execute('UPDATE Meal SET name = ?, tag = ?, picture = ?, description = ?, recipe = ? WHERE mealID = ? ;',
-                            (name, tag, picture, description, recipe, meal_id))
-        except sql.IntegrityError as e:
-            raise QueryUpdateError(name)
+        with get_connection() as con:
+            cur = con.cursor()
+            cur.execute('UPDATE Meal SET name = ?, tag = ?, picture = ?, description = ?, recipe = ? WHERE mealID = ? ;',
+                        (name, tag, picture, description, recipe, meal_id))
+
 
 class MealIngredientsQuery():
     @staticmethod

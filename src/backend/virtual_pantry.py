@@ -52,3 +52,6 @@ class VirtualPantry:
             contents.append((ingr, quantity))
         return contents
 
+    def delete_vpantry_entry(self, ingredient_id: int):
+        """Deletes an ingredient from the VP, no restrictions"""
+        db.VirtualPantryQuery.run_delete(ingredient_id)

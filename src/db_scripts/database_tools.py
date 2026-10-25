@@ -1,6 +1,7 @@
 # Purpose: Generic methods that all database logic will need
 import sqlite3 as sql
 from pathlib import Path
+import errors
 
 # (typing imports)
 from typing import ClassVar
@@ -70,14 +71,13 @@ class SelectDB:
         return rows.fetchall()
 
     @classmethod
-    def run_delete(cls, given_id: str):
+    def run_delete(cls, given_id: int):
         try:
             with get_connection() as con:
                 cur = con.cursor()
-                cur.execute(f'DELETE FROM {cls.delete_table_name} WHERE {cls.delete_id_name} = ?', (given_id))
-        # TODO: This type of error will happen often. We need a error message showing what constraints are keeping it from being deleted
+                cur.execute(f'DELETE FROM {cls.delete_table_name} WHERE {cls.delete_id_name} = ?', (str(given_id),))
         except sql.IntegrityError as e:
-            raise QueryDeleteError
+            raise errors.QueryDeleteError from e
 
 
     @classmethod
@@ -101,29 +101,3 @@ def load_measure_ids() -> dict[str, int]:
         return dict(cur.execute('SELECT name, measureID FROM MeasureType'))
 
 
-# Errors for logic
-class MealIngredientQuery(SelectDB):
-    pass
-
-# Errors for data validation
-class DatabaseErrors(Exception): 
-    """Base class for this library"""
-
-class QueryInvalidFK(DatabaseErrors):
-    def __init__(self, value_type, value):
-        self.value_type = value_type
-        self.value = value
-
-    def __str__(self):
-        return f'Invalid {self.value_type} given!'
-
-class QueryUpdateError(DatabaseErrors):
-    def __init__(self, identifier):
-        self.identifier = identifier
-
-    def __str__(self):
-        return f'Unable to update: {self.identifier!r}'
-
-class QueryDeleteError(DatabaseErrors):
-    def __str__(self):
-        return f'Unable to delete selected item. Probably constrained to another item'

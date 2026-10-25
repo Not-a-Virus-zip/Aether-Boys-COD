@@ -9,6 +9,10 @@ from . import (
     existing,
     backend_tools as bt,
 )
+from errors import (
+    QueryDeleteError,
+    IngredientInUseError,
+)
 
 # Note construct like so:
 #   Ingredient(5, "example name", "example tag", units.kilogram)
@@ -86,3 +90,10 @@ class IngredientList:
     def tags_in_use(self, query: str):
         """Get a list of unique tags in use"""
         return [tag for tag, in iq.run_get_tags(query or None)]
+
+    def delete_ingredient(self, ingredient_id: int):
+        """Remove an ingredient from the database, restricted by Meal"""
+        try:
+            iq.run_delete(ingredient_id)   
+        except QueryDeleteError as e:
+            raise IngredientInUseError from e  # This error gets raised if the ingredient is part of a meal. If it is in virtual pantry it will get silently deleted. Make sure to give warnings.
