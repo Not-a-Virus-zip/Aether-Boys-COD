@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from tkinter import ttk
 from tkinter import scrolledtext as scrtxt
 import tkinter as tk
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Protocol, override
 import pint
 
 from . import user_interface_impl as ui
@@ -34,19 +34,25 @@ class EditMenu:
     It also lets you add save/cancel buttons to the bottom of the menu.
     """
     frame: ttk.Frame
+    next_row: int
+    menu_widgets: list[Validatable]
+    submenus: list[EditMenu]
 
     def __init__(self, parent: tk.Misc) -> None:
         self.frame = ttk.Frame(parent, padding=10)
         self.frame.columnconfigure(1, minsize=10)
         self.next_row = 1
+        self.menu_widgets = []
+        self.submenus = []
 
-    def insert[T: SharedData](self, name: str, elem: T) -> MenuField[T]:
+    def insert[T: MenuWidget](self, name: str, elem: T) -> MenuField[T]:
         tgt_row = self.claim_row()
         field_label = ttk.Label(self.frame, text=name)
         field_label.grid(row=tgt_row, column=0, sticky="ne")
         elem.insert(row=tgt_row, column=2)
         menu_field = MenuField(field_label, elem)
-
+        
+        self.menu_widgets.append(menu_field.elem)
         return menu_field
 
     def finish_construction(self, bottom_buttons: Iterable[tuple[str, Callable[[], None]] | str | int]) -> list[ttk.Button]:
@@ -67,6 +73,18 @@ class EditMenu:
         spacer_row = self.claim_row()
         self.frame.rowconfigure(spacer_row, minsize=height)
         return spacer_row
+
+    def register_submenu_for_checking(self, em: EditMenu):
+        self.submenus.append(em)
+
+    def check_all_input_and_show_errors(self) -> bool:
+        """Return True if no errors, False otherwise."""
+        success = True
+        for w in self.menu_widgets:
+            success = success and w.check_and_show_errors()
+        for submenu in self.submenus:
+            success = success and submenu.check_all_input_and_show_errors()
+        return success
     
     def get_row_count(self) -> int:
         return self.next_row
@@ -144,41 +162,56 @@ class EventEditor:
     interval: MenuField[FixedOptions]
     stop_on: MenuField[Entry]
 
+class Validatable:
+    def check_and_show_errors(self) -> bool:
+        """Return True if check was successful, False if errors."""
+        return True
 
-class SharedData:
+class MenuWidget(Validatable):
     def insert(self, row: int, column: int):
         raise NotImplementedError(f"`insert` not implemented for {type(self).__name__}")
 
-class Searcher:
+class Searcher(Validatable):
     def insert(self, row: int, column: int, search_menu: EditMenuWithSearcher):
         raise NotImplementedError
 
     def notify_about_selection(self, index: int):
         raise NotImplementedError
 
-class Display(SharedData):
+class Display(MenuWidget):
     display: ttk.Label
     
     def __init__(self, container: ttk.Frame, initial_text: str):
         self.display = ttk.Label(container, text=initial_text)
 
+    @override
     def insert(self, row: int, column: int):
         self.display.grid(row=row, column=column, sticky="nw")
 
     def set_text(self, text: str):
         self.display.config(text=text)
 
+class InputCheck(Protocol):
+    def identify_issues(self, text: str) -> str | None:
+        """If nothing is wrong, return None, otherwise, return a string describing the problem."""
+        raise NotImplementedError
 
-class Entry(SharedData):
+@dataclass
+class SimpleCheck(InputCheck):
+    reason: str
+    check: Callable[[str], bool]
+
+    @override
+    def identify_issues(self, text: str) -> str | None:
+        return None if self.check(text) else self.reason
+
+class Entry(MenuWidget):
     input_field: ttk.Entry
 
     def __init__(self, container: ttk.Frame, initial_text: str = ""):
         self.input_field = ttk.Entry(container)
         self.input_field.insert(tk.END, initial_text)
-    
-    def insert(self, row: int, column: int):
-        self.input_field.grid(row=row, column=column, sticky="nw")
-    
+
     def set_text(self, text: str):
         self.input_field.delete(0, tk.END)
         self.input_field.insert(tk.END, text)
@@ -186,13 +219,70 @@ class Entry(SharedData):
     def get_text(self):
         return self.input_field.get()
 
+    @override
+    def insert(self, row: int, column: int):
+        self.input_field.grid(row=row, column=column, sticky="nw")
 
-class Button(SharedData):
+class CheckedEntry(MenuWidget):
+    input_check: InputCheck
+    error_visible: bool
+
+    frame: ttk.Frame
+    error_label: ttk.Label
+    input_field: ttk.Entry
+    input_var: tk.StringVar
+
+    def __init__(self, container: ttk.Frame, input_check: InputCheck, initial_text: str = ""):
+        self.input_check = input_check
+        self.error_visible = False
+
+        self.frame = ttk.Frame(container)
+        self.error_label = ttk.Label(self.frame)
+        self.input_field = ttk.Entry(self.frame)
+        self.input_var = tk.StringVar(self.input_field)
+
+        # self.frame.columnconfigure(0, weight=1)
+        self.input_field.grid(row=0, column=0, sticky="w")
+        self.error_label.grid(row=0, column=1, sticky="w")
+
+        self.input_field.config(textvariable=self.input_var)
+        self.input_field.insert(tk.END, initial_text)
+
+        # self.input_var.trace_add("write", self._on_edit)
+
+    # def _on_edit(self, *_):
+    #     if not self.error_visible:
+    #         return
+    #     self.error_label.config
+
+    def set_text(self, text: str):
+        self.input_field.delete(0, tk.END)
+        self.input_field.insert(tk.END, text)
+
+    def get_text(self):
+        return self.input_field.get()
+
+    @override
+    def check_and_show_errors(self) -> bool:
+        result = self.input_check.identify_issues(self.get_text())
+        if result is None:
+            return True
+        else:
+            self.error_visible = True
+            self.error_label.config(text=result)
+            return False
+
+    @override
+    def insert(self, row: int, column: int):
+        self.frame.grid(row=row, column=column, sticky="nw")
+
+class Button(MenuWidget):
     button: ttk.Button
 
     def __init__(self, container: ttk.Frame, button_text: str):
         self.button = ttk.Button(container, text=button_text)
     
+    @override
     def insert(self, row: int, column: int):
         self.button.grid(row=row, column=column, sticky="nw")
     
@@ -200,7 +290,7 @@ class Button(SharedData):
         self.button.config(text=text)
 
 
-class Text(SharedData):
+class Text(MenuWidget):
     input_field: scrtxt.ScrolledText
     
     def __init__(self, container: ttk.Frame, initial_text: str = ""):
@@ -213,6 +303,7 @@ class Text(SharedData):
         # method
         self.direct_grid = self.input_field.grid
 
+    @override
     def insert(self, row: int, column: int):
         self.input_field.grid(row=row, column=column, sticky="nw")
 
@@ -227,13 +318,14 @@ class Text(SharedData):
         return self.input_field.get("0.0", tk.END).removesuffix("\n")
 
 
-class QuantityEntry(SharedData):
+class QuantityEntry(MenuWidget):
     input_field: ttk.Entry
 
     def __init__(self, container: ttk.Frame, quantity: pint.Quantity):
         self.input_field = ttk.Entry(container)
         self.input_field.insert(tk.END, ui.fmt_qty(quantity))
     
+    @override
     def insert(self, row: int, column: int):
         self.input_field.grid(row=row, column=column, sticky="nw")
     
@@ -250,7 +342,7 @@ class QuantityEntry(SharedData):
 
 def identity(n): return n
 
-class FixedOptions(SharedData):
+class FixedOptions(MenuWidget):
     def __init__(self, container: ttk.Frame): pass
 
 class DbSearchOptions[T](Searcher):
@@ -293,6 +385,7 @@ class DbSearchOptions[T](Searcher):
             self.selected = None
             self.show_search_results_in_side_bar()
 
+    @override
     def insert(self, row: int, column: int, search_menu: EditMenuWithSearcher):
         self.search_menu = search_menu
         self.search_bar.grid(row=row, column=column, sticky="nw")
@@ -322,117 +415,21 @@ class DbSearchOptions[T](Searcher):
         self.selected = self.entries[index]
         self.set_text(self.translation_fn(self.selected), skip_text_update_callback=True)
 
-class Image(SharedData):
+class Image(MenuWidget):
     image: ttk.Label
 
     def __init__(self, container: ttk.Frame):
         self.image = ttk.Label(container, image=ui.placeholder_image, padding=2, relief=tk.RIDGE)
     
+    @override
     def insert(self, row: int, column: int):
         self.image.grid(row=row, column=column, sticky="nw")
 
-
-class IngredientSelector(SharedData):
-    ingredient_list: ScrollableTreeview
-    def __init__(self, container: ttk.Frame, initial_data: tuple):
-        self.frame = ttk.Frame(container)
-        self.ingredient_list = ScrollableTreeview(self.frame, columns=("name", "qty"), show="headings", selectmode="browse")
-
-        tv = self.ingredient_list.treeview
-        tv.heading("name", text="Name")
-        tv.column("name", anchor="w", width=1)
-        tv.heading("qty", text="Quantity")
-        tv.column("qty", anchor="e", width=1)
-
-        self.frame.columnconfigure(0, weight=1)
-        self.frame.rowconfigure(0, weight=1)
-        self.ingredient_list.grid(row=0, column=0, sticky="news")
-
-    def insert(self, row: int, column: int):
-        self.frame.grid(row=row, column=column, sticky="news")
-
-class ListDisplay(SharedData):
+class ListDisplay(MenuWidget):
     def __init__(self, container: ttk.Frame): pass
 
-class Checkbox(SharedData):
+class Checkbox(MenuWidget):
     def __init__(self, container: ttk.Frame): pass
 
 class SeparatingBar:
     def __init__(self, container: ttk.Frame): pass
-
-"""
-match option_type:
-    case "display":
-        display = ttk.Label(holder, text=sample_input)
-        display.grid(row=i, column=1, sticky="nw")
-    case "entry":
-        entry = ttk.Entry(holder)
-        entry.insert(tk.END, sample_input)
-        entry.grid(row=i, column=1, sticky="nw")
-    case "button":
-        button = ttk.Button(holder, text=sample_input)
-        button.grid(row=i, column=1, sticky="nw")
-    case "add ingredient":
-        ing_name, quantity = sample_input.split(",")
-        add_frame = ttk.Frame(holder)
-
-        db_ing_search = ttk.Combobox(add_frame, values=[ing_name])
-        db_ing_search.insert(tk.END, ing_name)
-        db_ing_search.grid(row=0, column=0)
-
-        qty_entry = ttk.Entry(add_frame)
-        qty_entry.insert(tk.END, quantity)
-        qty_entry.grid(row=0, column=1)
-
-        add_button = ttk.Button(add_frame, text="Add")
-        add_button.grid(row=0, column=2)
-
-        add_frame.columnconfigure(3, weight=1)
-
-        remove_button = ttk.Button(add_frame, text="Remove")
-        remove_button.grid(row=0, column=3, sticky="e")
-
-        add_frame.grid(row=i, column=1, sticky="nw")
-    case "text":
-        text = ScrolledText(holder, height=3)
-        text.insert(tk.END, sample_input)
-        text.grid(row=i, column=1, sticky="new")
-    case "fixed options":
-        opt_var = tk.StringVar(holder, value=sample_input)
-        fixed_opt = ttk.OptionMenu(holder, opt_var, sample_input)
-        fixed_opt.grid(row=i, column=1, sticky="nw")
-    case "db search options":
-        db_search = ttk.Combobox(holder, values=[sample_input])
-        db_search.insert(tk.END, sample_input)
-        db_search.grid(row=i, column=1, sticky="nw")
-    case "list display":
-        db_list_frame = ttk.Frame(holder)
-        header, *data = sample_input.splitlines()
-        headers = header.split()
-        header_ids = list(map(str.lower, headers))
-        list_display = ttk.Treeview(db_list_frame, columns=header_ids, show="headings")
-        for name, hid in zip(headers, header_ids):
-            list_display.heading(hid, text=name)
-        for line in data:
-            list_display.insert("", "end", values=line.split(","))
-        scrollbar = ttk.Scrollbar(db_list_frame, command=list_display.yview)
-
-        # db_list_frame.columnconfigure(0, weight=1)
-        list_display.grid(row=0, column=0)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-
-        list_display.config(yscrollcommand=scrollbar.set)
-
-        db_list_frame.grid(row=i, column=1, sticky="nw")
-    case "image":
-        image = ttk.Label(holder, image=placeholder_image, padding=2, relief=tk.RIDGE)
-        image.grid(row=i, column=1, sticky="nw")
-    case "checkbox":
-        checkbox = ttk.Checkbutton(holder)
-        checkbox.invoke()
-        checkbox.grid(row=i, column=1, sticky="nw")
-    case "separating bar":
-        bar = ttk.Separator(holder)
-        bar.grid(row=i, column=0, columnspan=2, sticky="ew")
-        continue
-"""

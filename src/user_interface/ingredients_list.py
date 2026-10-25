@@ -106,7 +106,7 @@ class IngredientsList:
 
 class IngredientEditMenu(em.EditMenuWithSearcher):
     """Constructs and controls the pop-up menu for adding/editing ingredients"""
-    ingredient_name: em.MenuField[em.Entry]
+    ingredient_name: em.MenuField[em.CheckedEntry]
     tag: em.MenuField[em.DbSearchOptions[str]]
     ingredient_measurement: em.MenuField[em.DbSearchOptions]
     db_search_display: ttk.Treeview
@@ -132,7 +132,9 @@ class IngredientEditMenu(em.EditMenuWithSearcher):
 
         super().__init__(container)
 
-        self.ingredient_name        = self.insert("Ingredient Name", em.Entry(self.frame, name))
+        name_check = em.SimpleCheck("Missing Name", bool)
+
+        self.ingredient_name        = self.insert("Ingredient Name", em.CheckedEntry(self.frame, name_check, name))
         self.tag                    = self.insert_searcher("Tag", em.DbSearchOptions(self.frame, "Tags", self._search_tags, initial_value=tag))
         self.ingredient_measurement = self.insert_searcher("Measurement Type", em.DbSearchOptions(self.frame, "Measurements", self._search_measurements, initial_value=measure))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
@@ -148,6 +150,9 @@ class IngredientEditMenu(em.EditMenuWithSearcher):
         return self.ingr_list.backend.search_ingredient_units(user_input)
 
     def save_and_close(self):
+        if not self.check_all_input_and_show_errors():
+            # TODO: Pop-up error?
+            return
         new_name = self.ingredient_name.elem.get_text()
         new_tag: str = self.tag.elem.get_text()
         new_msmnt = self.ingredient_measurement.elem.get_text()

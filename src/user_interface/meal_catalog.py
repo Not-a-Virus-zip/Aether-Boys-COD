@@ -121,8 +121,13 @@ class MealEditMenu(em.EditMenu):
         self.header_frame.grid(row=self.claim_row(), column=0, columnspan=3, sticky="new")
         self.image = ttk.Label(self.header_frame, image=ui.placeholder_image, padding=2, relief=tk.RIDGE)
         self.image.grid(row=0, column=0)
+
+        name_check = em.SimpleCheck("Missing name", bool)
+
         mini_em = em.EditMenu(self.header_frame)
-        self.name_entry = mini_em.insert("Name", em.Entry(mini_em.frame, selected_meal.name)).elem
+        self.register_submenu_for_checking(mini_em)
+
+        self.name_entry = mini_em.insert("Name", em.CheckedEntry(mini_em.frame, name_check, selected_meal.name)).elem
         self.tag_entry = mini_em.insert("Tag", em.Entry(mini_em.frame, selected_meal.tag)).elem
         self.desc_entry = mini_em.insert("Description", em.Text(mini_em.frame, selected_meal.description)).elem
         mini_em.frame.grid(row=0, column=1, sticky="news")
@@ -144,13 +149,10 @@ class MealEditMenu(em.EditMenu):
         self.recipe_entry = em.Text(self.frame, selected_meal.recipe)
         self.recipe_entry.input_field.config(height=4)
         self.recipe_entry.direct_grid(row=self.claim_row(), column=0, columnspan=3, sticky="ew")
-        
 
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
         self.cancel_button.config(command=container.destroy)
         self.save_button.config(command=self.save_and_close)
-
-        # container.after_idle(container.resizable, True, True)
 
     def collect_changes_into_meal(self) -> ExistingDetailedMeal | DetailedMeal:
         return self.meal.modify(
@@ -163,7 +165,10 @@ class MealEditMenu(em.EditMenu):
         )
 
     def save_and_close(self):
-        # TODO: Handle missing fields
+        if not self.check_all_input_and_show_errors():
+            # TODO: Pop-up error?
+            return
+        
         match self.collect_changes_into_meal():
             case ExistingDetailedMeal() as meal:
                 self.catalog.backend.meals.update_meal(meal)
@@ -183,11 +188,6 @@ class IngrCurrentPanel:
         self.quantity_label = ttk.Label(frame, text="Curr. Ingredients")
         self.quantity_label.grid(row=0, column=2, sticky="ew")
 
-        # self.quantity_frame = ttk.Frame(frame)
-        # self.quantity_frame.columnconfigure(0, weight=1, minsize=200, uniform="qtyeditor")
-        # self.quantity_frame.columnconfigure(1, weight=1, minsize=200, uniform="qtyeditor")
-
-        # self.quantity_frame.grid(row=2, column=2, sticky="ew")
         self.quantity_var = tk.StringVar(frame)
         self.quantity_editor = ttk.Entry(frame, textvariable=self.quantity_var)
         self.quantity_editor.bind("<KeyPress-Return>", self._on_quantity_editor_return)
@@ -235,10 +235,10 @@ class IngrCurrentPanel:
         self.quantity_editor.state(("disabled",))
         self.confirm_button.state(("disabled",))
         self.confirm_button.config(text="Select an Ingredient")
+        self.error_display.config(text="")
 
     def _enable_qty_editor(self):
         self.quantity_editor.state(("!disabled",))
-        self.confirm_button.state(("!disabled",))
 
     def _on_quantity_editor_return(self, event: tk.Event):
         if self.quantity_editor.instate(("!disabled",)) and self.confirm_button.instate(("!disabled",)):
@@ -306,6 +306,8 @@ class IngrCurrentPanel:
         except Exception as e:
             set_mode_error(str(e))
             return
+        if new_qty.unitless:
+            new_qty *= curr_qty.units
         expected_unit = active_ingr.measurement_type.pint_unit
         if not new_qty.is_compatible_with(expected_unit):
             set_mode_error(f"Incompatible units {new_qty.units} and {expected_unit}")
