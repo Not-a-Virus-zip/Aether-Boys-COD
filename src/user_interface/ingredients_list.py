@@ -107,8 +107,8 @@ class IngredientsList:
 class IngredientEditMenu(em.EditMenuWithSearcher):
     """Constructs and controls the pop-up menu for adding/editing ingredients"""
     ingredient_name: em.MenuField[em.CheckedEntry]
-    tag: em.MenuField[em.DbSearchOptions[str]]
-    ingredient_measurement: em.MenuField[em.DbSearchOptions]
+    tag: em.MenuField[em.OpenDbSearchOptions]
+    ingredient_measurement: em.MenuField[em.OpenDbSearchOptions]
     db_search_display: ttk.Treeview
     db_search_scrollbar: ttk.Scrollbar
     container: tk.Toplevel
@@ -135,8 +135,8 @@ class IngredientEditMenu(em.EditMenuWithSearcher):
         name_check = em.SimpleCheck("Missing Name", bool)
 
         self.ingredient_name        = self.insert("Ingredient Name", em.CheckedEntry(self.frame, name_check, name))
-        self.tag                    = self.insert_searcher("Tag", em.DbSearchOptions(self.frame, "Tags", self._search_tags, initial_value=tag))
-        self.ingredient_measurement = self.insert_searcher("Measurement Type", em.DbSearchOptions(self.frame, "Measurements", self._search_measurements, initial_value=measure))
+        self.tag                    = self.insert_searcher("Tag", em.OpenDbSearchOptions(self.frame, "Tags", self._search_tags, initial_value=tag))
+        self.ingredient_measurement = self.insert_searcher("Measurement Type", em.OpenDbSearchOptions(self.frame, "Measurements", self._search_measurements, initial_value=measure))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
 
         self.cancel_button.config(command=container.destroy)

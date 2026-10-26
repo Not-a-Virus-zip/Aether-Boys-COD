@@ -122,7 +122,7 @@ class MealEditMenu(em.EditMenu):
         self.image = ttk.Label(self.header_frame, image=ui.placeholder_image, padding=2, relief=tk.RIDGE)
         self.image.grid(row=0, column=0)
 
-        name_check = em.SimpleCheck("Missing name", bool)
+        name_check = em.SimpleCheck("Missing Name", bool)
 
         mini_em = em.EditMenu(self.header_frame)
         self.register_submenu_for_checking(mini_em)

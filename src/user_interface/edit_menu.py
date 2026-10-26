@@ -51,7 +51,6 @@ class EditMenu:
         field_label.grid(row=tgt_row, column=0, sticky="ne")
         elem.insert(row=tgt_row, column=2)
         menu_field = MenuField(field_label, elem)
-        
         self.menu_widgets.append(menu_field.elem)
         return menu_field
 
@@ -126,11 +125,12 @@ class EditMenuWithSearcher(EditMenu):
             self.active_searcher.notify_about_selection(selected_index)
 
     def insert_searcher[T: Searcher](self, name: str, elem: T) -> MenuField[T]:
+        tgt_row = self.claim_row()
         field_label = ttk.Label(self.frame, text=name)
-        field_label.grid(row=self.next_row, column=0, sticky="ne")
-        elem.insert(row=self.next_row, column=2, search_menu=self)
+        field_label.grid(row=tgt_row, column=0, sticky="ne")
+        elem.insert(row=tgt_row, column=2, search_menu=self)
         menu_field = MenuField(field_label, elem)
-        self.next_row += 1
+        self.menu_widgets.append(menu_field.elem)
         return menu_field
 
     def post_search(self, menu: Searcher, display_header: str, values: list[str]):
@@ -155,7 +155,7 @@ class EditMenuWithSearcher(EditMenu):
 
 class EventEditor:
     """EXAMPLE CASE"""
-    meal: MenuField[DbSearchOptions]
+    meal: MenuField[OpenDbSearchOptions]
     time: MenuField[Entry]
     date: MenuField[Entry]
     repeat: MenuField[FixedOptions]
@@ -266,6 +266,7 @@ class CheckedEntry(MenuWidget):
     def check_and_show_errors(self) -> bool:
         result = self.input_check.identify_issues(self.get_text())
         if result is None:
+            self.error_label.config(text="")
             return True
         else:
             self.error_visible = True
@@ -345,32 +346,32 @@ def identity(n): return n
 class FixedOptions(MenuWidget):
     def __init__(self, container: ttk.Frame): pass
 
-class DbSearchOptions[T](Searcher):
+class OpenDbSearchOptions(Searcher):
     search_bar: ttk.Entry
     text_var: tk.StringVar
-    search_fn: Callable[[str], list[T]]
-    translation_fn: Callable[[T], str]
+    search_fn: Callable[[str], list[str]]
     display_header: str
-    entries: list[T]
-    search_menu: EditMenuWithSearcher
-    selected: T | None
+    entries: list[str]
 
-    def __init__(self, container: ttk.Frame, display_header: str, db_search: Callable[[str], list[T]], translation_fn: Callable[[T], str] = identity, initial_value: str = ""):
+    search_menu: EditMenuWithSearcher
+
+    _update_on_text_changes: bool
+
+    def __init__(self, container: ttk.Frame, display_header: str, db_search: Callable[[str], list[str]], initial_value: str = ""):
         self.search_bar = ttk.Entry(container)
         self.text_var = tk.StringVar(self.search_bar)
         self.search_fn = db_search
-        self.translation_fn = translation_fn
         self.display_header = display_header
         self.entries = []
+
         # self.search_menu is set when self.insert is called
-        self.selected = None
 
         self.search_bar.config(textvariable=self.text_var)
         self.search_bar.insert(tk.END, initial_value)
         self.text_var.trace_add("write", self._on_text_update)
         self.search_bar.bind("<FocusIn>", self._on_focus, add=True)
         self.search_bar.bind("<KeyPress-Return>", self._on_press_enter, add=True)
-        self.update_on_text_changes = True
+        self._update_on_text_changes = True
 
     def _on_press_enter(self, event: tk.Event):
         if len(self.entries) == 1:
@@ -381,7 +382,7 @@ class DbSearchOptions[T](Searcher):
         self.show_search_results_in_side_bar()
 
     def _on_text_update(self, *_):
-        if self.update_on_text_changes:
+        if self._update_on_text_changes:
             self.selected = None
             self.show_search_results_in_side_bar()
 
@@ -390,30 +391,125 @@ class DbSearchOptions[T](Searcher):
         self.search_menu = search_menu
         self.search_bar.grid(row=row, column=column, sticky="nw")
 
-    def set_text(self, text: str, skip_text_update_callback=False):
-        if skip_text_update_callback:
-            self.update_on_text_changes = False
+    def set_text(self, text: str, update_search_results=True):
+        if not update_search_results:
+            self._update_on_text_changes = False
         self.text_var.set(text)
-        if skip_text_update_callback:
-            self.update_on_text_changes = True
+        if not update_search_results:
+            self._update_on_text_changes = True
 
     def get_text(self) -> str:
         return self.text_var.get()
 
-    def get_selection(self) -> T | None:
-        return self.selected
-
     def show_search_results_in_side_bar(self):
-        search_text = self.text_var.get().strip()
-        self.entries = self.search_fn(search_text)
-        self.search_menu.post_search(self, self.display_header, list(map(self.translation_fn, self.entries)))
+        raw_text = self.get_text()
+        search_text = raw_text.strip()
+        self.entries = results = self.search_fn(search_text)
+        self.search_menu.post_search(self, self.display_header, results)
 
-        if len(self.entries) == 1 and self.translation_fn(self.entries[0]).strip().lower() == search_text.lower():
+        if len(results) == 1 and results[0] == raw_text:
             self.search_menu.set_selected(0)
 
     def notify_about_selection(self, index: int):
+        self.set_text(self.entries[index], update_search_results=False)
+
+class ClosedDbSearchOptions[T](Searcher):
+    search_bar: ttk.Entry
+    text_var: tk.StringVar
+    search_fn: Callable[[str], list[T]]
+    translation_fn: Callable[[T], str]
+    display_header: str
+    error_msg: str
+    entries: list[T]
+    selected: T | None
+
+
+    search_menu: EditMenuWithSearcher
+
+    _update_on_text_changes: bool
+    
+    def __init__(self, container: ttk.Frame, display_header: str, error_msg: str, db_search: Callable[[str], list[T]], translation_fn: Callable[[T], str], initial_value: T | None = None):
+        initial_value_str = translation_fn(initial_value) if initial_value is not None else ""
+
+        self.frame = ttk.Frame(container)
+
+        self.error_label = ttk.Label(self.frame)
+        self.error_label.grid(row=0, column=1)
+
+        self.search_bar = ttk.Entry(self.frame)
+        self.text_var = tk.StringVar(self.search_bar)
+        self.search_bar.grid(row=0, column=0)
+        
+        self.search_fn = db_search
+        self.translation_fn = translation_fn
+        self.display_header = display_header
+        self.error_msg = error_msg
+        self.entries = []
+        # self.search_menu is set when self.insert is called
+        self.selected = initial_value
+    
+        self.search_bar.config(textvariable=self.text_var)
+        self.search_bar.insert(tk.END, initial_value_str)
+        self.text_var.trace_add("write", self._on_text_update)
+        self.search_bar.bind("<FocusIn>", self._on_focus, add=True)
+        self.search_bar.bind("<KeyPress-Return>", self._on_press_enter, add=True)
+
+        self._update_on_text_changes = True
+
+    @override
+    def check_and_show_errors(self) -> bool:
+        if self.get_selection() is not None:
+            self.error_label.config(text="")
+            return True
+        else:
+            # self.error_visible = True
+            self.error_label.config(text=self.error_msg)
+            return False
+    
+    def _on_press_enter(self, event: tk.Event):
+        if len(self.entries) == 1:
+            self.search_menu.set_selected(0)
+            self.search_bar.after_idle(self.search_bar.icursor, tk.END)
+    
+    def _on_focus(self, event: tk.Event):
+        self.show_search_results_in_side_bar()
+    
+    def _on_text_update(self, *_):
+        if self._update_on_text_changes:
+            self.selected = None
+            self.show_search_results_in_side_bar()
+    
+    @override
+    def insert(self, row: int, column: int, search_menu: EditMenuWithSearcher):
+        self.search_menu = search_menu
+        self.frame.grid(row=row, column=column, sticky="nw")
+    
+    def set_text(self, text: str, update_search_results=True):
+        if not update_search_results:
+            self._update_on_text_changes = False
+        self.text_var.set(text)
+        if not update_search_results:
+            self._update_on_text_changes = True
+    
+    def get_text(self) -> str:
+        return self.text_var.get()
+    
+    def get_selection(self) -> T | None:
+        return self.selected
+    
+    def show_search_results_in_side_bar(self):
+        search_text = self.get_text().strip()
+        self.entries = self.search_fn(search_text)
+        self.search_menu.post_search(self, self.display_header, list(map(self.translation_fn, self.entries)))
+    
+        if len(self.entries) == 1 and self.translation_fn(self.entries[0]).strip().lower() == search_text.lower():
+            self.search_menu.set_selected(0)
+    
+    def notify_about_selection(self, index: int):
         self.selected = self.entries[index]
-        self.set_text(self.translation_fn(self.selected), skip_text_update_callback=True)
+        self.set_text(self.translation_fn(self.selected) , update_search_results=False)
+
+x: ClosedDbSearchOptions[int]
 
 class Image(MenuWidget):
     image: ttk.Label

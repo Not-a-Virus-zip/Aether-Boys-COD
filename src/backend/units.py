@@ -6,8 +6,11 @@ from . import existing
 units: pint.UnitRegistry = pint.UnitRegistry()
 
 def interpret_quantity(quantity: str) -> pint.Quantity:
-    # try:
-    return units.parse_expression(quantity)
+    quantity = quantity.strip()
+    if quantity:
+        return units.parse_expression(quantity)
+    else:
+        raise ValueError("expected quantity expression, found empty string")
     
 
 def get_units(unit_name: str) -> pint.Unit:

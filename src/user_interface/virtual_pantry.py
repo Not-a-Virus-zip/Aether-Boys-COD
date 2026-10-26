@@ -132,7 +132,7 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
     This uses a different class because it requires selecting what ingredient to add."""
     pantry: VirtualPantry
     container: tk.Toplevel
-    ingredient_name: em.MenuField[em.DbSearchOptions[ExistingIngredient]]
+    ingredient_name: em.MenuField[em.ClosedDbSearchOptions[ExistingIngredient]]
     amount: em.MenuField[em.QuantityEntry]
     save_button: ttk.Button
     cancel_button: ttk.Button
@@ -142,7 +142,7 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
     def __init__(self, pantry: VirtualPantry, container: tk.Toplevel) -> None:
         super().__init__(container)
 
-        self.ingredient_name = self.insert_searcher("Ingredient", em.DbSearchOptions(self.frame, "Ingredients", self._search, lambda i: i.name))
+        self.ingredient_name = self.insert_searcher("Ingredient", em.ClosedDbSearchOptions(self.frame, "Ingredients", "Missing Ingredient", self._search, lambda i: i.name))
         self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, 0 * units.units.dimensionless))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
         self.cancel_button.configure(command=container.destroy)
@@ -153,9 +153,11 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
         self.last_search = []
 
     def _search(self, query: str) -> list[ExistingIngredient]:
-        return self.pantry.ing_backend.load_ingredient_list("ingredient", query)
+        return self.pantry.ing_backend.load_ingredient_list("name", query)
 
     def save_and_close(self):
+        if not self.check_all_input_and_show_errors():
+            return
         new_quantity = self.amount.elem.get_quantity()
         ingredient = self.ingredient_name.elem.get_selection()
         # TODO: handle this case
