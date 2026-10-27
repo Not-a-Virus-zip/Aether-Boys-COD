@@ -1,18 +1,21 @@
 import sys
 import sqlite3
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # This is bc of something with the errors.py . Idek. Thanks stack overflow
-from database_tools import get_connection
 
-# This code gets the home directory based on the current file path: "BASE_DIR/src/db_scripts/database_tools.py"
-#        rebuild_database.py   db_scripts  src  base directory
-#                 vvvv              vvv    vvv    vvv
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+from src.database.database_tools import get_connection
+
+# This code gets the home directory based on the current file path: "BASE_DIR/scripts/rebuild_database.py"
+#        rebuild_database.py      scripts  base directory
+#                 vvvv              vvv    vvv
+BASE_DIR = Path(__file__).resolve().parent.parent
 # This gets the path to the meal planner
 DB_PATH = BASE_DIR / 'data' / 'mymealplanner.db'
 SCRIPT_PATH = BASE_DIR / 'data'
-SQL_FILES = ('MMP_Create_Tables.sql', 'MMP_Insert_MeasureType.sql',
-             'MMP_Insert_Test_Data.sql',)
+SQL_FILES = (
+    'MMP_Create_Tables.sql',
+    'MMP_Insert_MeasureType.sql',
+    'MMP_Insert_Test_Data.sql',
+)
 
 # Rebuilds and deletes all previous data in the database
 def _rebuild_database(): 

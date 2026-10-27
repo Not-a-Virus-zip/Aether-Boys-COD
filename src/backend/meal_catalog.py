@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 import dataclasses
-from typing import Literal
 
 import pint
 
@@ -12,7 +11,7 @@ from . import (
     backend_tools as bt,
 )
 
-from ..db_scripts import (
+from ..database import (
     database_logic as db,
     database_tools as dt,
 )

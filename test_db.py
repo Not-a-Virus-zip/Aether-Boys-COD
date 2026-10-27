@@ -1,3 +1,3 @@
-from src.db_scripts import database_logic
+from src.database import database_logic
 
 # test the database however you want

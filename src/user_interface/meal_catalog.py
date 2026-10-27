@@ -331,6 +331,7 @@ class IngrCurrentPanel:
         assert self.editing_index is not None
         assert self.current_ingrs[self.editing_index][0].id == expected_id
         del self.current_ingrs[self.editing_index]
+        self.editing_index = None
         self.update_quantity_list()
 
     def get_ingredients(self) -> list[tuple[ExistingIngredient, pint.Quantity]]:

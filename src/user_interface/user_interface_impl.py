@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 # Standard Library Imports
-import random
-from typing import Literal, Callable, Iterable
+from typing import Callable, Iterable
 from tkinter import ttk
-from tkinter import messagebox
-from tkinter.scrolledtext import ScrolledText
 import tkinter as tk
 from dataclasses import dataclass
-import enum
 
 # External Library Imports
 import pint
@@ -27,7 +23,6 @@ from ..backend import (
 )
 
 
-
 def fmt_qty(qty: pint.Quantity | pint.Unit) -> str:
     return f"{qty:~P}"
 
@@ -36,7 +31,7 @@ placeholder_image: tk.PhotoImage
 def launch_ui():
     app = Application()
     global placeholder_image
-    placeholder_image = tk.PhotoImage(file="src/user_interface/placeholder.png")
+    placeholder_image = tk.PhotoImage(file="assets/placeholder.png")
     app.run()
 
 @dataclass
@@ -80,7 +75,7 @@ class UserInterface:
         top_bar_menu = ttk.Notebook(root, name="top_bar_menu")
 
         self.pantry = vp.VirtualPantry(top_bar_menu, backend)
-        self.meals = mc.MealCatalog(top_bar_menu, backend) # DummyInterface("Meal Catalog", ttk.Frame(top_bar_menu, name="meal_catalogue"))
+        self.meals = mc.MealCatalog(top_bar_menu, backend)
         self.calendar = DummyInterface("Calendar", ttk.Frame(top_bar_menu, name="calendar"))
         self.shopping_list = DummyInterface("Your Shopping List", ttk.Frame(top_bar_menu, name="shopping"))
         self.ingredients = il.IngredientsList(top_bar_menu, self.pantry, backend.ingredients)

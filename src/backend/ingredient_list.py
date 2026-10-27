@@ -3,16 +3,20 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass
 
-from ..db_scripts.database_logic import (IngredientQuery as iq, MeasureTypeQuery as mq)
+from ..database.database_logic import (
+    IngredientQuery as iq,
+    MeasureTypeQuery as mq,
+)
+from ..database.errors import (
+    QueryDeleteError,
+    IngredientInUseError,
+)
 from .units import MeasureType
 from . import (
     existing,
     backend_tools as bt,
 )
-from errors import (
-    QueryDeleteError,
-    IngredientInUseError,
-)
+
 
 # Note construct like so:
 #   Ingredient(5, "example name", "example tag", units.kilogram)
