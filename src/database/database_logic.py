@@ -2,7 +2,7 @@
 import sqlite3 as sql
 
 from .database_tools import SelectDB, get_connection
-from .errors import QueryInvalidFK
+from ..errors import QueryInvalidFK
 
 
 type Name = str

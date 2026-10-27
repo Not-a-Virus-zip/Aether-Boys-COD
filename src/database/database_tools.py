@@ -5,7 +5,7 @@ from pathlib import Path
 # (typing imports)
 from typing import ClassVar
 
-from . import errors
+from .. import errors
 
 # This code gets the home directory based on the current file path: "BASE_DIR/src/database/database_tools.py"
 #          database_tools.py   database  src  base directory

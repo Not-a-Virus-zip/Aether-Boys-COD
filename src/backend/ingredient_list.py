@@ -7,7 +7,7 @@ from ..database.database_logic import (
     IngredientQuery as iq,
     MeasureTypeQuery as mq,
 )
-from ..database.errors import (
+from ..errors import (
     QueryDeleteError,
     IngredientInUseError,
 )

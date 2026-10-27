@@ -179,7 +179,7 @@ class MealEditMenu(em.EditMenu):
 
 class IngrCurrentPanel:
     def __init__(self, frame: ttk.Frame, starting_ingredients: Iterable[tuple[ExistingIngredient, pint.Quantity]]) -> None:
-        self.ingr_quantities = ttk.Treeview(frame, columns=["name", "qty"], show="headings", selectmode="browse")
+        self.ingr_quantities = ttk.Treeview(frame, columns=["name", "qty"], show="headings")
         scrollbar = ttk.Scrollbar(frame)
         link_treeview_to_scrollbar(self.ingr_quantities, scrollbar)
         self.ingr_quantities.grid(row=1, column=2, sticky="new")
@@ -211,13 +211,12 @@ class IngrCurrentPanel:
         self.error_display.grid(row=4, column=2, sticky="new")
         frame.rowconfigure(4, minsize=2 + self.error_display.winfo_reqheight() * 3)
 
-        self._disable_qty_editor()
-
         self.display_len = 0
         self.current_ingrs = list(starting_ingredients)
         self.editing_index: int | None = None
         self.current_ingredient_ids = {ing.id for ing, _ in self.current_ingrs}
-        
+
+        self._disable_qty_editor()
 
         tv = self.ingr_quantities
         tv.heading("name", text="Name")
@@ -234,6 +233,7 @@ class IngrCurrentPanel:
     def _disable_qty_editor(self):
         self.quantity_editor.state(("disabled",))
         self.confirm_button.state(("disabled",))
+        self.quantity_var.set("")
         self.confirm_button.config(text="Select an Ingredient")
         self.error_display.config(text="")
 
@@ -246,9 +246,11 @@ class IngrCurrentPanel:
 
     def _on_selection_update(self, event: tk.Event):
         selection = self.ingr_quantities.selection()
-        if len(selection) == 0:
+        if len(selection) != 1:
+            self.editing_index = None
             self._disable_qty_editor()
             return
+
         self._enable_qty_editor()
 
         ingr_index = int(selection[0])
@@ -327,9 +329,10 @@ class IngrCurrentPanel:
         self.current_ingrs[self.editing_index] = ingr, new_quantity
         self.update_quantity_list()
 
-    def _do_remove_active_ingr(self, expected_id: int):
+    def _do_remove_active_ingr(self, tgt_id: int):
         assert self.editing_index is not None
-        assert self.current_ingrs[self.editing_index][0].id == expected_id
+        assert self.current_ingrs[self.editing_index][0].id == tgt_id
+        self.current_ingredient_ids.remove(tgt_id)
         del self.current_ingrs[self.editing_index]
         self.editing_index = None
         self.update_quantity_list()
@@ -379,7 +382,7 @@ class IngrAddPanel:
     ingr_display: ttk.Treeview
     search_var: tk.StringVar
     search: ttk.Entry
-    current_ingrs: list[ExistingIngredient]
+    displayed_ingrs: list[ExistingIngredient]
     add_button: ttk.Button
     
 
@@ -407,7 +410,7 @@ class IngrAddPanel:
         self.search_var.trace_add("write", self._on_search_text_update)
         self.search.grid(row=0, column=2, sticky="ew")
 
-        self.current_ingrs = []
+        self.displayed_ingrs = []
 
 
         self.add_button = ttk.Button(frame, text="Add Ingredient", command=self.on_press_add_button, state=tk.DISABLED)
@@ -429,7 +432,7 @@ class IngrAddPanel:
 
     def on_press_add_button(self):
         self.other_panel.add_ingredients(tuple(
-            self.current_ingrs[int(index)]
+            self.displayed_ingrs[int(index)]
             for index in self.ingr_display.selection()
         ))
         self.update_ingr_list()
@@ -437,10 +440,10 @@ class IngrAddPanel:
     def _autosorter_command(self, query: str, column: str, asc: bool):
         new_list = self.ing_backend.load_ingredient_list("name", query, sort_mode=column, asc=asc)
         new_list = list(filter(self.other_panel.is_ingr_not_in_meal, new_list))
-        if len(self.current_ingrs) > 0:
-            self.ingr_display.delete(*range(len(self.current_ingrs)))
-        self.current_ingrs = new_list
-        for i, ingr in enumerate(self.current_ingrs):
+        if len(self.displayed_ingrs) > 0:
+            self.ingr_display.delete(*range(len(self.displayed_ingrs)))
+        self.displayed_ingrs = new_list
+        for i, ingr in enumerate(self.displayed_ingrs):
             self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])
 
     def update_ingr_list(self):
