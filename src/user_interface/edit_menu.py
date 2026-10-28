@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from textwrap import wrap
 from tkinter import ttk
 from tkinter import scrolledtext as scrtxt
 import tkinter as tk
@@ -320,15 +321,45 @@ class Text(MenuWidget):
 
 
 class QuantityEntry(MenuWidget):
+    frame: ttk.Frame
     input_field: ttk.Entry
+    error_label: ttk.Label
+    input_var: tk.StringVar
 
-    def __init__(self, container: ttk.Frame, quantity: pint.Quantity):
-        self.input_field = ttk.Entry(container)
+    _unit_constraint: pint.Unit | None
+
+    def __init__(self, container: ttk.Frame, quantity: pint.Quantity, unit_constraint: pint.Unit | None):
+        self._unit_constraint = unit_constraint
+
+        self.frame = ttk.Frame(container)
+        self.input_field = ttk.Entry(self.frame, width=30)
+        self.error_label = ttk.Label(self.frame, anchor="w", wraplength=self.input_field.winfo_reqwidth())
+
+        self.input_field.grid(row=0, column=0, sticky="nw")
+        self.error_label.grid(row=1, column=0, sticky="nwe")
+        
+        self.input_var = tk.StringVar(self.input_field)
+        self.input_field.config(textvariable=self.input_var)
+        self.input_var.trace_add("write", self._on_text_update)
         self.input_field.insert(tk.END, ui.fmt_qty(quantity))
+
+    def set_unit_constraint(self, new_unit_constraint: pint.Unit | None):
+        self._unit_constraint = new_unit_constraint
+
+        # refresh error display based on new unit_constraint
+        self._on_text_update()
     
     @override
     def insert(self, row: int, column: int):
-        self.input_field.grid(row=row, column=column, sticky="nw")
+        self.frame.grid(row=row, column=column, sticky="nw")
+
+    @override
+    def check_and_show_errors(self) -> bool:
+        try:
+            self.get_quantity()
+            return True
+        except Exception:
+            return False
     
     def set_text(self, text: str):
         self.input_field.delete(0, tk.END)
@@ -338,8 +369,16 @@ class QuantityEntry(MenuWidget):
         return self.input_field.get()
 
     def get_quantity(self) -> pint.Quantity:
-        parsed = units.interpret_quantity(self.get_text())
+        """Raises an exception on invalid input"""
+        text = self.get_text().strip() or "0" # interpret empty input as zero?
+        parsed = units.interpret_quantity(text, self._unit_constraint)
         return parsed
+
+    def _on_text_update(self, *_):
+        try:
+            self.error_label.config(text=f"= {ui.fmt_qty(self.get_quantity())}")
+        except Exception as err:
+            self.error_label.config(text=str(err))
 
 def identity(n): return n
 
@@ -428,7 +467,16 @@ class ClosedDbSearchOptions[T](Searcher):
 
     _update_on_text_changes: bool
     
-    def __init__(self, container: ttk.Frame, display_header: str, error_msg: str, db_search: Callable[[str], list[T]], translation_fn: Callable[[T], str], initial_value: T | None = None):
+    def __init__(
+            self,
+            container: ttk.Frame,
+            display_header: str,
+            error_msg: str,
+            db_search: Callable[[str], list[T]],
+            translation_fn: Callable[[T], str],
+            initial_value: T | None = None,
+            selection_callback: Callable[[T | None], None] | None = None
+            ) -> None:
         initial_value_str = translation_fn(initial_value) if initial_value is not None else ""
 
         self.frame = ttk.Frame(container)
@@ -455,6 +503,7 @@ class ClosedDbSearchOptions[T](Searcher):
         self.search_bar.bind("<KeyPress-Return>", self._on_press_enter, add=True)
 
         self._update_on_text_changes = True
+        self._selection_callback = selection_callback
 
     @override
     def check_and_show_errors(self) -> bool:
@@ -508,6 +557,8 @@ class ClosedDbSearchOptions[T](Searcher):
     def notify_about_selection(self, index: int):
         self.selected = self.entries[index]
         self.set_text(self.translation_fn(self.selected) , update_search_results=False)
+        if self._selection_callback is not None:
+            self._selection_callback(self.selected)
 
 x: ClosedDbSearchOptions[int]
 

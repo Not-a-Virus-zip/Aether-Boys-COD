@@ -109,7 +109,7 @@ class VPantryEditMenu(em.EditMenu):
     def __init__(self, pantry: VirtualPantry, container: tk.Toplevel, ingredient: ExistingIngredient, qty: pint.Quantity) -> None:
         super().__init__(container)
         self.ingredient_name = self.insert("Ingredient", em.Display(self.frame, ingredient.name))
-        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, qty))
+        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, qty, ingredient.measurement_type.pint_unit))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
         self.cancel_button.configure(command=container.destroy)
         self.save_button.configure(command=self.save_and_close)
@@ -119,8 +119,11 @@ class VPantryEditMenu(em.EditMenu):
         self.container = container
 
     def save_and_close(self):
+        if not self.check_all_input_and_show_errors():
+            # TODO: Pop-up error?
+            return
         new_quantity = self.amount.elem.get_quantity()
-        # TODO: handle this case
+        
         # assert self.prev_quantity.is_compatible_with(new_quantity)
         self.pantry.pantry_backend.update_vpantry_entry(self.ingredient, new_quantity)
         self.pantry.refresh_pantry()
@@ -142,8 +145,8 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
     def __init__(self, pantry: VirtualPantry, container: tk.Toplevel) -> None:
         super().__init__(container)
 
-        self.ingredient_name = self.insert_searcher("Ingredient", em.ClosedDbSearchOptions(self.frame, "Ingredients", "Missing Ingredient", self._search, lambda i: i.name))
-        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, 0 * units.units.dimensionless))
+        self.ingredient_name = self.insert_searcher("Ingredient", em.ClosedDbSearchOptions(self.frame, "Ingredients", "Missing Ingredient", self._search, lambda i: i.name, selection_callback=self._on_ingredient_change))
+        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, 0 * units.units.dimensionless, None))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
         self.cancel_button.configure(command=container.destroy)
         self.save_button.configure(command=self.save_and_close)
@@ -155,12 +158,15 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
     def _search(self, query: str) -> list[ExistingIngredient]:
         return self.pantry.ing_backend.load_ingredient_list("name", query)
 
+    def _on_ingredient_change(self, ingr: ExistingIngredient | None) -> None:
+        self.amount.elem.set_unit_constraint(None if ingr is None else ingr.measurement_type.pint_unit)
+
     def save_and_close(self):
         if not self.check_all_input_and_show_errors():
+            # TODO: Pop-up error?
             return
         new_quantity = self.amount.elem.get_quantity()
         ingredient = self.ingredient_name.elem.get_selection()
-        # TODO: handle this case
         assert ingredient is not None
         self.pantry.pantry_backend.add_vpantry_entry(ingredient, new_quantity)
         self.pantry.refresh_pantry()

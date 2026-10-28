@@ -5,10 +5,17 @@ from ..database.database_logic import MeasureTypeQuery as mtq
 from . import existing
 units: pint.UnitRegistry = pint.UnitRegistry()
 
-def interpret_quantity(quantity: str) -> pint.Quantity:
-    quantity = quantity.strip()
-    if quantity:
-        return units.parse_expression(quantity)
+def interpret_quantity(quantity_expression: str, unit_constraint: pint.Unit | None = None) -> pint.Quantity:
+    quantity_expression = quantity_expression.strip()
+    if quantity_expression:
+        quantity = units.parse_expression(quantity_expression)
+        if unit_constraint is None:
+            return quantity
+        if quantity.unitless:
+            quantity *= unit_constraint
+        if not quantity.is_compatible_with(unit_constraint):
+            raise ValueError(f"Incompatible units: {quantity.units} and {unit_constraint}")
+        return quantity
     else:
         raise ValueError("expected quantity expression, found empty string")
     

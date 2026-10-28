@@ -304,21 +304,16 @@ class IngrCurrentPanel:
             set_mode_delete()
             return
         try:
-            new_qty = units.interpret_quantity(current_text)
+            new_qty = units.interpret_quantity(current_text, active_ingr.measurement_type.pint_unit)
         except Exception as e:
             set_mode_error(str(e))
-            return
-        if new_qty.unitless:
-            new_qty *= curr_qty.units
-        expected_unit = active_ingr.measurement_type.pint_unit
-        if not new_qty.is_compatible_with(expected_unit):
-            set_mode_error(f"Incompatible units {new_qty.units} and {expected_unit}")
             return
         
         # if user hasn't changed the quantity or the units for that quantity, the button should be disabled
         if new_qty == curr_qty and new_qty.units == curr_qty.units:
             set_mode_no_change()
             return
+
         set_mode_success(new_qty)
 
     def _update_active_ingr_qty(self, expected_id: int, new_quantity: pint.Quantity):
