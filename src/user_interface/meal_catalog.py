@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from typing import Iterable
 
 import pint
@@ -52,12 +52,22 @@ class MealCatalog:
 
         self.meal_display.grid(row=0, column=0, columnspan=2, sticky="news")
 
-
-        button_frame, (self.add_button, self.edit_button) = ui.make_buttons(self.frame, ("Add New", "Edit Selected"), button_weight=1)
+        button_frame, (
+            self.delete_button,
+            self.add_button,
+            self.edit_button,
+        ) = ui.make_buttons(
+            self.frame, (
+                ("Delete Selected", self.press_delete_button),
+                ("Add New", self.press_add_button),
+                ("Edit Selected", self.press_edit_button),
+            ),
+            button_weight=1
+        )
         button_frame.grid(row=1, column=0, sticky="nsew")
 
-        self.add_button.config(command=self.press_add_button)
-        self.edit_button.config(command=self.press_edit_button, state=tk.DISABLED)
+        self.delete_button.config(state=tk.DISABLED)
+        self.edit_button.config(state=tk.DISABLED)
 
         self.catalog_contents = []
         self.refresh_catalog()
@@ -75,7 +85,9 @@ class MealCatalog:
         self.auto_sorter.refresh()
         
     def _on_selection_change(self, tv: tk.Event) -> object:
-        self.edit_button.config(state=tk.NORMAL if self.is_meal_selected() else tk.DISABLED)
+        new_state = tk.NORMAL if self.is_meal_selected() else tk.DISABLED
+        self.edit_button.config(state=new_state)
+        self.delete_button.config(state=new_state)
         
     def is_meal_selected(self) -> bool:
         return len(self.meal_display.treeview.selection()) != 0
@@ -83,6 +95,20 @@ class MealCatalog:
     def get_selected(self) -> mc_backend.ExistingSimpleMeal | None:
         selection = self.meal_display.treeview.selection()
         return None if len(selection) == 0 else self.catalog_contents[int(selection[0])]
+
+    def press_delete_button(self):
+        meal = self.get_selected()
+        if meal is None:
+            return
+        if messagebox.askokcancel(
+            "Confirm Deletion",
+            f"Are you sure you want to delete \"{meal.name}\" from your meal catalog?",
+            icon=messagebox.WARNING,
+            default=messagebox.CANCEL,
+            parent=self.frame,
+        ):
+            self.backend.meals.delete_meal(meal.id)
+            self.refresh_catalog()
 
     def press_add_button(self):
         em.show_edit_menu(

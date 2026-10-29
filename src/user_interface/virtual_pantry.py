@@ -1,5 +1,6 @@
 from __future__ import annotations
-from tkinter import ttk
+
+from tkinter import messagebox, ttk
 import tkinter as tk
 
 import pint
@@ -48,10 +49,23 @@ class VirtualPantry:
         self.refresh_pantry()
         self.pantry_display.grid(row=0, column=0, sticky="news")
         self.frame.grid(row=0, column=0, sticky="news")
-        buttons_frame, (self.add_button, self.edit_button) = \
-            ui.make_buttons(self.frame, ("Add New", "Edit Selected"), button_weight=1)
-        self.add_button.config(command=self.press_add_button)
-        self.edit_button.config(command=self.press_edit_button, state=tk.DISABLED)
+
+        buttons_frame, (
+            self.delete_button,
+            self.add_button,
+            self.edit_button
+        ) = ui.make_buttons(
+            self.frame,
+            (
+                ("Delete Selected", self.press_delete_button),
+                ("Add New", self.press_edit_button),
+                ("Edit Selected", self.press_edit_button),
+            ),
+            button_weight=1
+        )
+        self.delete_button.config(state=tk.DISABLED)
+        self.edit_button.config(state=tk.DISABLED)
+
         buttons_frame.grid(row=1, column=0, sticky="ew")
 
         tv.bind("<<TreeviewSelect>>", self._on_selection_change)
@@ -71,7 +85,9 @@ class VirtualPantry:
             self.pantry_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
 
     def _on_selection_change(self, tv: tk.Event) -> object:
-        self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
+        new_state = tk.NORMAL if self.is_ingr_selected() else tk.DISABLED
+        self.delete_button.config(state=new_state)
+        self.edit_button.config(state=new_state)
     
     def is_ingr_selected(self) -> bool:
         return len(self.pantry_display.treeview.selection()) != 0
@@ -79,6 +95,21 @@ class VirtualPantry:
     def get_selected(self) -> tuple[ExistingIngredient, pint.Quantity] | None:
         selection = self.pantry_display.treeview.selection()
         return None if len(selection) == 0 else self.pantry_contents[int(selection[0])]
+
+    def press_delete_button(self):
+        deletion_target = self.get_selected()
+        if deletion_target is None:
+            return
+        ingr, qty = deletion_target
+        if messagebox.askokcancel(
+            "Confirm Removal",
+            f"Are you sure you want to remove {ingr.name} ({ui.fmt_qty(qty)}) from your virtual pantry?",
+            icon=messagebox.WARNING,
+            default=messagebox.CANCEL,
+            parent=self.frame,
+        ):
+            self.pantry_backend.delete_vpantry_entry(ingr.id)
+            self.refresh_pantry()
 
     def press_add_button(self):
         em.show_edit_menu(

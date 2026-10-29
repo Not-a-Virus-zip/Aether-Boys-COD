@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from . import (
     edit_menu as em,
@@ -47,22 +48,29 @@ class IngredientsList:
         tv.column("unit", anchor="e", width=0)
 
         self.ingr_list = []
-        self.refresh_ingredients()
+        self.refresh_ingredients(also_refresh_pantry=False)
 
         self.ingr_display.grid(row=0, column=0, columnspan=2, sticky="news")
         ingredients_frame.rowconfigure(0, weight=1)
         ingredients_frame.columnconfigure(0, weight=1)
         ingredients_frame.columnconfigure(1, weight=1)
 
-        bottom_b_frame, (self.add_button, self.edit_button) = ui.make_buttons(
+        bottom_b_frame, (
+            self.delete_button,
+            self.add_button,
+            self.edit_button,
+        ) = ui.make_buttons(
             ingredients_frame,
             (
+                ("Delete Ingredient", self.press_delete_button),
                 ("Add New", self.press_add_button),
                 ("Edit Selected", self.press_edit_button)
             ),
             button_weight=1 # buttons should expand to fill the avalable space
         )
         self.edit_button.config(state=tk.DISABLED)
+        self.delete_button.config(state=tk.DISABLED)
+
         bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
         tv.bind("<<TreeviewSelect>>", self.on_selection_change)
 
@@ -72,13 +80,17 @@ class IngredientsList:
         self.ingr_list = self.backend.load_ingredient_list(sort_mode=column, asc=asc)
         for i, ingr in enumerate(self.ingr_list):
             self.ingr_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])# ui.fmt_qty(ingr.measurement_type)])
-        self.virtual_pantry.refresh_pantry()
 
-    def refresh_ingredients(self):
+    def refresh_ingredients(self, also_refresh_pantry=True):
+        "Propagate changes from the database into the ui."
         self.auto_sorter.refresh()
+        if also_refresh_pantry:
+            self.virtual_pantry.refresh_pantry()
 
     def on_selection_change(self, tv: tk.Event) -> object:
-        self.edit_button.config(state=tk.NORMAL if self.is_ingr_selected() else tk.DISABLED)
+        new_state = tk.NORMAL if self.is_ingr_selected() else tk.DISABLED
+        self.edit_button.config(state=new_state)
+        self.delete_button.config(state=new_state)
 
     def is_ingr_selected(self) -> bool:
         return len(self.ingr_display.treeview.selection()) != 0
@@ -86,6 +98,30 @@ class IngredientsList:
     def get_selected(self) -> ExistingIngredient | None:
         selection = self.ingr_display.treeview.selection()
         return None if len(selection) == 0 else self.ingr_list[int(selection[0])]
+
+    def press_delete_button(self):
+        ingr = self.get_selected()
+        if ingr is None:
+            return
+
+        # TODO: Warn if ingredient exists in virtual pantry
+        
+        if messagebox.askokcancel(
+            "Confirm Deletion",
+            f"Are you sure you want to delete \"{ingr.name}\" from the ingredient database?",
+            icon=messagebox.WARNING,
+            default=messagebox.CANCEL,
+            parent=self.frame,
+        ):
+            try:
+                self.backend.delete_ingredient(ingr.id)
+            except Exception as err:
+                messagebox.showerror(
+                    "Deletion Failed",
+                    f"Could not delete \"{ingr.name}\" from the ingredient database because it is currently used in a meal.",
+                    parent=self.frame,
+                )
+            self.refresh_ingredients()
     
     def press_add_button(self):
         em.show_edit_menu(

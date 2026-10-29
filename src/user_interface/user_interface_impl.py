@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 # Standard Library Imports
-from typing import Callable, Iterable
-from tkinter import ttk
+from typing import Any, Callable, Iterable
+from tkinter import messagebox, ttk
 import tkinter as tk
 from dataclasses import dataclass
 
@@ -111,7 +111,7 @@ def make_buttons(put_in: tk.Misc, button_instructions: Iterable[tuple[str, Calla
         if command is not None:
             button.config(command=command)
         if button_weight is not None and button_weight > 0:
-            bottom_buttons_frame.columnconfigure(i, weight=button_weight)
+            bottom_buttons_frame.columnconfigure(i, weight=button_weight, uniform="button")
             button.grid(row=0, column=i, sticky="ew")
         else:
             button.grid(row=0, column=i)
@@ -132,3 +132,4 @@ class DummyInterface:
     """Placeholder for unimplemented parts of the UI"""
     name: str
     frame: ttk.Frame
+
