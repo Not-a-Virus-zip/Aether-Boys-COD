@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from textwrap import wrap
 from tkinter import ttk
 from tkinter import scrolledtext as scrtxt
 import tkinter as tk
 from typing import Callable, Iterable, Protocol, override
+import enum
+
 import pint
 
 from . import user_interface_impl as ui
@@ -100,7 +103,7 @@ class EditMenuWithSearcher(EditMenu):
     search_display: ttk.Treeview
     active_searcher: Searcher | None
 
-    def __init__(self, parent: tk.Toplevel) -> None:
+    def __init__(self, parent: tk.Misc) -> None:
         super().__init__(parent)
         self.frame.columnconfigure(3, minsize=10)
         self.search_display = ttk.Treeview(self.frame, columns=["display"], show="headings")
@@ -380,10 +383,37 @@ class QuantityEntry(MenuWidget):
         except Exception as err:
             self.error_label.config(text=str(err))
 
-def identity(n): return n
-
 class FixedOptions(MenuWidget):
-    def __init__(self, container: ttk.Frame): pass
+    input_field: ttk.Combobox
+
+    def __init__(self, container: ttk.Frame, values: list[str], initial_option: int | None = None):
+        self.choices = set(values)
+        self.input_field = ttk.Combobox(container, values=values)
+        if initial_option is not None:
+            self.set_text(values[initial_option])
+
+    @override
+    def insert(self, row: int, column: int):
+        self.input_field.grid(row=row, column=column, sticky="nw")
+
+    @override
+    def check_and_show_errors(self) -> bool:
+        return self.get_text() in self.choices
+
+    def set_text(self, text: str):
+        self.input_field.delete(0, tk.END)
+        self.input_field.insert(tk.END, text)
+
+    def get_text(self):
+        return self.input_field.get()
+
+class FixedEnumOptions[T: enum.Enum](FixedOptions):
+    def __init__(self, container: ttk.Frame, values: list[T], initial_option: int | None = None):
+        self.enum_type = type(values[0])
+        super().__init__(container, [e.value for e in values], initial_option)
+
+    def get_selection(self) -> T:
+        return self.enum_type(self.get_text())
 
 class OpenDbSearchOptions(Searcher):
     search_bar: ttk.Entry
@@ -560,8 +590,6 @@ class ClosedDbSearchOptions[T](Searcher):
         if self._selection_callback is not None:
             self._selection_callback(self.selected)
 
-x: ClosedDbSearchOptions[int]
-
 class Image(MenuWidget):
     image: ttk.Label
 
@@ -572,11 +600,5 @@ class Image(MenuWidget):
     def insert(self, row: int, column: int):
         self.image.grid(row=row, column=column, sticky="nw")
 
-class ListDisplay(MenuWidget):
-    def __init__(self, container: ttk.Frame): pass
-
-class Checkbox(MenuWidget):
-    def __init__(self, container: ttk.Frame): pass
-
-class SeparatingBar:
-    def __init__(self, container: ttk.Frame): pass
+class DateEntry(Entry):
+    pass # TODO: Finish

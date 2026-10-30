@@ -15,6 +15,7 @@ from . import (
     virtual_pantry as vp,
     ingredients_list as il,
     meal_catalog as mc,
+    calendar as cal,
 )
 from ..backend import (
     ingredient_list as il_backend,
@@ -64,7 +65,7 @@ class Application:
 class UserInterface:
     pantry: vp.VirtualPantry
     meals: mc.MealCatalog
-    calendar: DummyInterface
+    calendar: cal.Calendar
     shopping_list: DummyInterface
     ingredients: il.IngredientsList
     settings: DummyInterface
@@ -76,7 +77,7 @@ class UserInterface:
 
         self.pantry = vp.VirtualPantry(top_bar_menu, backend)
         self.meals = mc.MealCatalog(top_bar_menu, backend)
-        self.calendar = DummyInterface("Calendar", ttk.Frame(top_bar_menu, name="calendar"))
+        self.calendar = cal.Calendar(top_bar_menu)
         self.shopping_list = DummyInterface("Your Shopping List", ttk.Frame(top_bar_menu, name="shopping"))
         self.ingredients = il.IngredientsList(top_bar_menu, self.pantry, backend.ingredients)
         self.settings = DummyInterface("Settings", ttk.Frame(top_bar_menu, name="settings"))
