@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS Ingredient;
 DROP TABLE IF EXISTS MealTag; -- legacy table, removed so old databases get cleaned up
 DROP TABLE IF EXISTS Tag;   -- legacy table, removed so old databases get cleaned up
 DROP TABLE IF EXISTS MeasureType;
+DROP TABLE IF EXISTS Event;
 
 
 CREATE TABLE MeasureType(
@@ -57,3 +58,22 @@ CREATE TABLE MealIngredient (
     FOREIGN KEY(measureID) REFERENCES MeasureType(measureID)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
+CREATE TABLE Event (
+    eventID INTEGER PRIMARY KEY,
+    date TEXT NOT NULL,  --'YYYY-MM-DD'
+    time TEXT NOT NULL,  --'HH:MM' (24-HOUR)
+    mealID INTEGER NOT NULL,
+    FOREIGN KEY(mealID) REFERENCES Meal(mealID)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE INDEX idx_event_date_time ON Event(date, time);  -- Sorted copy of date values for fast searching when using WHERE 
+
+
+
+-- SELECT e.eventID, e.date, e.time, m.name, m.name
+-- FROM Event AS e 
+-- JOIN Meal AS m 
+--     ON e.mealID = m.mealID 
+-- BETWEEN ? AND ?

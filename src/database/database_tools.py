@@ -42,9 +42,10 @@ class SelectDB:
             cls,
             order: str | None = None,
             filter_column: str | None = None,
-            filter_value: str | None = None,
+            filter_value: str | tuple[str, str] | None = None,
             asc: bool = True,
-            exact: bool = False
+            exact: bool = False,
+            between: bool = False,
     ) -> list[tuple]:
         editable_query = cls.select_query
         if filter_column is not None and filter_value is not None:  # Only activates if a filter column/value is added
@@ -56,6 +57,11 @@ class SelectDB:
             # Determines if the user wants an exact or more of a rough match
             if exact:
                 editable_query += '= ? '
+                filter_tuple = (filter_value,)
+            elif between:
+                if not(isinstance(filter_value, tuple) and len(filter_value) == 2):
+                    raise ValueError('BETWEEN requires filter_value to be a (start, end) tuple')
+                editable_query +='BETWEEN ? AND ? '
                 filter_tuple = (filter_value,)
             else:
                 editable_query += 'LIKE ? '

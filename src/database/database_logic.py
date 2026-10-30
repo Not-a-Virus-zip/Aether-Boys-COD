@@ -200,3 +200,30 @@ class MealIngredientsQuery():
                 'DO UPDATE SET qty = excluded.qty, measureID = excluded.measureID ',
                 [(meal_id, ing_id, qty, measure_id) for ing_id, (qty, measure_id) in ingredients.items()]
             )
+
+
+class SimpleEventQuery(SelectDB):
+    select_query = 'SELECT e.eventID, e.date, e.time, m.mealID, m.name ' \
+                   'FROM Event AS e ' \
+                   'JOIN Meal AS m ' \
+                       'ON e.mealID = m.mealID '
+    accepted_filters = {'meal' : 'm.mealID', 'id': 'e.eventID', 'date': 'e.date', 'time': 'e.time'}
+    accepted_sorts = {'date/time': 'e.date, e.time', 'date': 'e.date', 'meal' : 'm.mealID', 'id': 'e.eventID', 'time': 'e.time'}
+    
+
+
+class DetailedEventQuery(SelectDB):
+    @staticmethod
+    def run_insert(date: str,
+                   time: str,
+                   meal_id: int
+                   ) -> None:
+        pass
+
+    @staticmethod
+    def run_update(event_id: int,
+                   date: str,
+                   time: str,
+                   meal_id: int
+                   ) -> None:
+        pass

@@ -2,8 +2,6 @@ import sys
 import sqlite3
 from pathlib import Path
 
-from src.database.database_tools import get_connection
-
 # This code gets the home directory based on the current file path: "BASE_DIR/scripts/rebuild_database.py"
 #        rebuild_database.py      scripts  base directory
 #                 vvvv              vvv    vvv
@@ -15,7 +13,10 @@ SQL_FILES = (
     'MMP_Create_Tables.sql',
     'MMP_Insert_MeasureType.sql',
     'MMP_Insert_Test_Data.sql',
+    'MMP_Insert_Event_Data.sql'
 )
+sys.path.insert(0, str(BASE_DIR))
+from src.database.database_tools import get_connection
 
 # Rebuilds and deletes all previous data in the database
 def _rebuild_database(): 
