@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 import dataclasses
+from re import search
 
 import pint
 
@@ -47,10 +48,12 @@ class ExistingDetailedMeal(DetailedMeal):
     id: int
 
 class MealCatalog:
-    def get_simple_meals(self, sort_column: str = "name", asc: bool = True) -> list[ExistingSimpleMeal]:
+    def get_simple_meals(self, sort_column: str = "name", asc: bool = True, search_term: str = "") -> list[ExistingSimpleMeal]:
+        filter_value = search_term or None # if search_term is blank, filter value is None
+        filter_column = filter_value and "name" # if filter value is not None, filter column is name
         return [
             ExistingSimpleMeal(name, bt.denull(tag), bt.denull(description), id)
-            for id, name, tag, description in db.SimpleMealQuery.run_select(order=sort_column, asc=asc)
+            for id, name, tag, description in db.SimpleMealQuery.run_select(order=sort_column, asc=asc, filter_column=filter_column, filter_value=filter_value)
         ]
 
     def get_simple_meal(self, meal_id: int) -> ExistingSimpleMeal:
@@ -62,20 +65,6 @@ class MealCatalog:
                 return ExistingSimpleMeal(name, bt.denull(tag), bt.denull(description), id)
             case more_than_one:
                 raise Exception(f"Found more than one meal ({len(more_than_one)}) with id = {meal_id}. (??)")
-
-        meal_ingredients = db.DetailedMealQuery.run_select(filter_column='id', filter_value=str(meal_id), exact=True)
-        ingredients = []
-        meal = ExistingSimpleMeal(meal_ingredients[0][1], bt.denull(meal_ingredients[0][2]), bt.denull(meal_ingredients[0][4]), meal_ingredients[0][0])
-        picture, recipe = meal_ingredients[0][3], meal_ingredients[0][5]
-        if meal_ingredients[0][6] is not None:
-            for ingredient in meal_ingredients:
-                ing_id, ing_name, ing_tag, ing_measure_id, ing_measure_name = ingredient[6:11]  # Ingredient Information
-                mi_qty, mi_measure_id, mi_measure_name = ingredient[11:14]  # MealIngredient Information
-
-                ing = il.ExistingIngredient(ing_name, bt.denull(ing_tag), units.MeasureType(ing_measure_id, ing_measure_name), ing_id)
-                ingredients.append((ing, units.units.Quantity(mi_qty, mi_measure_name)))
-
-        return ExistingDetailedMeal(**asdict(meal), picture=bt.denull(picture), recipe=bt.denull(recipe), ingredients=tuple(ingredients))
 
     def get_detailed_meal(self, meal_id: int) -> ExistingDetailedMeal:
         meal_ingredients = db.DetailedMealQuery.run_select(filter_column='id', filter_value=str(meal_id), exact=True)
