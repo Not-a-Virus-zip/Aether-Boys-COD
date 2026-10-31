@@ -9,7 +9,7 @@ from . import (
     edit_menu as em,
     user_interface_impl as ui,
 )
-from .treeview_utilities import ScrollableTreeview, AutoSorter
+from .treeview_tools import ScrollableTreeview, AutoSorter
 from ..backend import (
     virtual_pantry as vp_backend,
     ingredient_list as il_backend,
@@ -37,7 +37,7 @@ class VirtualPantry:
         self.frame = ttk.Frame(parent, name="virtual pantry", padding=20)
         self.frame.columnconfigure(0, weight=1)
         self.frame.rowconfigure(0, weight=1)
-        self.pantry_display = ScrollableTreeview(self.frame, columns=["ingr", "qty"], show="headings", selectmode=tk.BROWSE)
+        self.pantry_display = ScrollableTreeview(self.frame, columns=["ingr", "qty"], show="headings")
         self.auto_sorter = AutoSorter(self.pantry_display.treeview, self._autosorter_command)
         tv = self.pantry_display.treeview
         tv.heading("ingr", text="Ingredient")
@@ -85,31 +85,37 @@ class VirtualPantry:
             self.pantry_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
 
     def _on_selection_change(self, tv: tk.Event) -> object:
-        new_state = tk.NORMAL if self.is_ingr_selected() else tk.DISABLED
-        self.delete_button.config(state=new_state)
-        self.edit_button.config(state=new_state)
-    
-    def is_ingr_selected(self) -> bool:
-        return len(self.pantry_display.treeview.selection()) != 0
+        num_selected = self.get_num_selected()
+        self.delete_button.config(state=tk.NORMAL if num_selected > 0 else tk.DISABLED)
+        self.edit_button.config(state=tk.NORMAL if num_selected == 1 else tk.DISABLED)
 
-    def get_selected(self) -> tuple[ExistingIngredient, pint.Quantity] | None:
+    def get_num_selected(self) -> int:
+        return len(self.pantry_display.treeview.selection())
+
+    def get_selected(self) -> list[tuple[ExistingIngredient, pint.Quantity]]:
         selection = self.pantry_display.treeview.selection()
-        return None if len(selection) == 0 else self.pantry_contents[int(selection[0])]
+        return [self.pantry_contents[int(n)] for n in selection]
 
     def press_delete_button(self):
-        deletion_target = self.get_selected()
-        if deletion_target is None:
-            return
-        ingr, qty = deletion_target
+        deletion_targets = self.get_selected()
+        if len(deletion_targets) == 1:
+            ingr, qty = deletion_targets[0]
+            removal_msg = f"Are you sure you want to remove {ingr.name} ({ui.fmt_qty(qty)}) from your virtual pantry?"
+            detail = ""
+        else:
+            removal_msg = f"Are you sure you want to remove the following ingredients from your virtual pantry?"
+            detail = "\n".join(f"{ingr.name} ({ui.fmt_qty(qty)})" for ingr, qty in deletion_targets)
         if messagebox.askokcancel(
             "Confirm Removal",
-            f"Are you sure you want to remove {ingr.name} ({ui.fmt_qty(qty)}) from your virtual pantry?",
+            removal_msg,
+            detail=detail,
             icon=messagebox.WARNING,
             default=messagebox.CANCEL,
             parent=self.frame,
         ):
-            self.pantry_backend.delete_vpantry_entry(ingr.id)
-            self.refresh_pantry()
+            for ingr, _ in deletion_targets:
+                self.pantry_backend.delete_vpantry_entry(ingr.id)
+                self.refresh_pantry()
 
     def press_add_button(self):
         em.show_edit_menu(
@@ -120,8 +126,8 @@ class VirtualPantry:
 
     def press_edit_button(self):
         selection = self.get_selected()
-        assert selection is not None, "Edit button should be disabled when nothing is selected"
-        name, qty = selection
+        assert len(selection) == 1, "Edit button should be disabled when the selection is not exactly one ingredient"
+        name, qty = selection[0]
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",

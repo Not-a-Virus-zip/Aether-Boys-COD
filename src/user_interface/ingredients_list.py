@@ -8,7 +8,7 @@ from . import (
     user_interface_impl as ui,
     virtual_pantry as vp,
 )
-from .treeview_utilities import ScrollableTreeview, AutoSorter
+from .treeview_tools import ScrollableTreeview, AutoSorter
 from ..backend import (
     ingredient_list as il_backend,
     virtual_pantry as vp_backend,
@@ -36,7 +36,7 @@ class IngredientsList:
         self.virtual_pantry = virtual_pantry
 
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
-        self.ingr_display = ScrollableTreeview(ingredients_frame, columns=["name", "tag", "unit"], show="headings")
+        self.ingr_display = ScrollableTreeview(ingredients_frame, columns=["name", "tag", "unit"], show="headings", selectmode=tk.BROWSE)
         self.auto_sorter = AutoSorter(self.ingr_display.treeview, self._autosorter_command)
         tv = self.ingr_display.treeview
          # width=0 lets the treeview widget auto-determine the appropriate width
@@ -72,7 +72,7 @@ class IngredientsList:
         self.delete_button.config(state=tk.DISABLED)
 
         bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
-        tv.bind("<<TreeviewSelect>>", self.on_selection_change)
+        tv.bind("<<TreeviewSelect>>", self._on_selection_change)
 
     def _autosorter_command(self, query: str, column: str, asc: bool):
         if len(self.ingr_list) > 0:
@@ -87,17 +87,20 @@ class IngredientsList:
         if also_refresh_pantry:
             self.virtual_pantry.refresh_pantry()
 
-    def on_selection_change(self, tv: tk.Event) -> object:
-        new_state = tk.NORMAL if self.is_ingr_selected() else tk.DISABLED
+    def _on_selection_change(self, tv: tk.Event) -> object:
+        new_state = tk.NORMAL if self.is_one_ingr_selected() else tk.DISABLED
         self.edit_button.config(state=new_state)
         self.delete_button.config(state=new_state)
 
-    def is_ingr_selected(self) -> bool:
-        return len(self.ingr_display.treeview.selection()) != 0
+    def is_one_ingr_selected(self) -> bool:
+        return len(self.ingr_display.treeview.selection()) == 1
 
     def get_selected(self) -> ExistingIngredient | None:
         selection = self.ingr_display.treeview.selection()
-        return None if len(selection) == 0 else self.ingr_list[int(selection[0])]
+        if len(selection) == 1:
+            return self.ingr_list[int(selection[0])]
+        else:
+            return None
 
     def press_delete_button(self):
         ingr = self.get_selected()

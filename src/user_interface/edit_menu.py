@@ -11,7 +11,7 @@ import enum
 import pint
 
 from . import user_interface_impl as ui
-from .treeview_utilities import ScrollableTreeview
+from .treeview_tools import ScrollableTreeview
 from ..backend import units
 
 def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):

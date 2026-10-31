@@ -20,7 +20,7 @@ from ..backend import (
 from ..backend.meal_catalog import ExistingSimpleMeal, ExistingDetailedMeal, DetailedMeal
 from ..backend.ingredient_list import ExistingIngredient
 
-from .treeview_utilities import ScrollableTreeview, link_treeview_to_scrollbar, AutoSorter
+from .treeview_tools import ScrollableTreeview, link_treeview_to_scrollbar, AutoSorter
 
 class MealCatalog:
     """Constructs and controls the meal catalog UI"""
@@ -88,6 +88,9 @@ class MealCatalog:
         new_state = tk.NORMAL if self.is_meal_selected() else tk.DISABLED
         self.edit_button.config(state=new_state)
         self.delete_button.config(state=new_state)
+    
+    def get_num_selected(self) -> int:
+        return len(self.meal_display.treeview.selection())
         
     def is_meal_selected(self) -> bool:
         return len(self.meal_display.treeview.selection()) != 0
