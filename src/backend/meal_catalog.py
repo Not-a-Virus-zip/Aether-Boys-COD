@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 import dataclasses
+from re import search
 
 import pint
 
@@ -47,10 +48,12 @@ class ExistingDetailedMeal(DetailedMeal):
     id: int
 
 class MealCatalog:
-    def get_simple_meals(self, sort_column: str = "name", asc: bool = True) -> list[ExistingSimpleMeal]:
+    def get_simple_meals(self, sort_column: str = "name", asc: bool = True, search_term: str = "") -> list[ExistingSimpleMeal]:
+        filter_value = search_term or None # if search_term is blank, filter value is None
+        filter_column = filter_value and "name" # if filter value is not None, filter column is name
         return [
             ExistingSimpleMeal(name, bt.denull(tag), bt.denull(description), id)
-            for id, name, tag, description in db.SimpleMealQuery.run_select(order=sort_column, asc=asc)
+            for id, name, tag, description in db.SimpleMealQuery.run_select(order=sort_column, asc=asc, filter_column=filter_column, filter_value=filter_value)
         ]
 
     def get_simple_meal(self, meal_id: int) -> ExistingSimpleMeal:

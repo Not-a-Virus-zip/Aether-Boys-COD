@@ -21,7 +21,8 @@ PANEL_LABEL_NAME = "calendar label"
 class Calendar:
     name = "Calendar"
 
-    def __init__(self, parent: ttk.Notebook) -> None:
+    def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
+        self.backend = backend
         self.cal = calendar.Calendar(firstweekday=calendar.SUNDAY)
 
         self.frame = ttk.Frame(parent, name="calendar", padding=20)
@@ -35,8 +36,10 @@ class Calendar:
         left_b = ttk.Button(time_selector_frame, text="<", width=2, command=lambda: self.shift_month(-1))
         right_b = ttk.Button(time_selector_frame, text=">", width=2, command=lambda: self.shift_month(1))
         
-        self.month_box = ttk.Combobox(time_selector_frame, justify=tk.CENTER, values=list(map(fmt_month_int, calendar.Month)))
-        self.month_box.insert(tk.END, "Decembruary")
+        self.month_box = ttk.Combobox(time_selector_frame, justify=tk.CENTER, state="readonly", values=list(MONTHS_MAP))
+        self.month_box.bind("<<ComboboxSelected>>", self._on_month_selected)
+
+        # self.month_box.insert(tk.END, "Decembruary")
         self.year_box = ttk.Combobox(time_selector_frame)
         self.year_box.insert(tk.END, "13/6/3322")
         for n in 0, 4:
@@ -77,6 +80,13 @@ class Calendar:
         current_date = datetime.datetime.now()
         self.setup_for_month(current_date.year, current_date.month)
 
+    def _on_month_selected(self, event: tk.Event):
+        selection = self.month_box.current()
+        if selection == -1:
+            print("What?")
+            return
+        self.setup_for_month(self.current_year, selection+1)
+
     def shift_month(self, shift: int):
         new_month = ((self.current_month + shift - 1) % 12) + 1
         self.setup_for_month(self.current_year, new_month)
@@ -84,7 +94,8 @@ class Calendar:
     def setup_for_month(self, year: int, month: int):
         self.current_month = month
         self.current_year = year
-        self.month_box.set(fmt_month_int(month))
+        if self.month_box.current() != month - 1:
+            self.month_box.current(month - 1)
 
         for frame, month_n in zip(self.day_frames, self.cal.itermonthdays(year, month)):
             label = frame.children[PANEL_LABEL_NAME]
@@ -97,6 +108,8 @@ class Calendar:
 
 def fmt_month_int(month_int: calendar.Month | int) -> str:
     return calendar.Month(month_int).name.capitalize()
+
+MONTHS_MAP = {fmt_month_int(month): month for month in calendar.Month}
 
 class DayOfTheWeek(enum.Enum):
     Sunday = 0
@@ -113,11 +126,17 @@ class RepeatOptions(enum.Enum):
 
 
 class EditEvent(em.EditMenuWithSearcher):
-    def __init__(self, parent: tk.Misc, event: ExistingSimpleEvent | SimpleEvent) -> None:
+    def __init__(self, parent: tk.Misc, backend: ui.Backend, event: ExistingSimpleEvent | SimpleEvent) -> None:
         super().__init__(parent)
-        self.meal = self.insert_searcher("Meal", em.ClosedDbSearchOptions(self.frame, "Meal", "Missing Meal", self._search_meal, lambda m: m.name))
+        initial_meal = backend.meals.get_simple_meal(event.meal_id)
+
+        self.backend = backend
+        self.meal = self.insert_searcher(
+            "Meal",
+            em.ClosedDbSearchOptions(self.frame, "Meal", "Missing Meal", self._search_meal, lambda m: m.name, initial_value=initial_meal)
+        )
         self.time = self.insert("Time", em.Entry(self.frame))
         self.date = self.insert("Date", em.DateEntry(self.frame))
     
     def _search_meal(self, query: str) -> list[ExistingSimpleMeal]:
-        return []
+        return self.backend.meals.get_simple_meals(search_term=query)
