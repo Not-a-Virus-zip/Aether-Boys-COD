@@ -26,22 +26,17 @@ class Ingredient:
     # feel free to add more fields if needed
     name: str
     tag: str
-    measurement_type: MeasureType  # pint.Unit - Right now the MeasurementType database doesn't use Pint. Will change after demo
+    measurement_type: MeasureType
 
     # this is a method btw
-    modify = dataclasses.replace
+    modify = existing.modify
     __post_init__ = existing.type_check_self
 
 
 @dataclass(frozen=True)
 class ExistingIngredient(Ingredient):
     """An ingredient with an id that currently exists in the database"""
-    # feel free to add more fields if needed
     id: int
-
-    # this is a method btw
-    modify = existing.modify
-    __post_init__ = existing.type_check_self
 
 
 def ingredient_from_db_tuple(db_tuple: tuple[int, str, str | None, int, str]) -> ExistingIngredient:
