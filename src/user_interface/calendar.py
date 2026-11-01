@@ -14,7 +14,7 @@ from . import (
     virtual_pantry as vp,
 )
 from ..backend.meal_catalog import ExistingSimpleMeal
-from ..backend.event import SimpleEvent, ExistingSimpleEvent
+from ..backend.event import Event, ExistingEvent
 
 PANEL_LABEL_NAME = "calendar label"
 
@@ -126,7 +126,7 @@ class RepeatOptions(enum.Enum):
 
 
 class EditEvent(em.EditMenuWithSearcher):
-    def __init__(self, parent: tk.Misc, backend: ui.Backend, event: ExistingSimpleEvent | SimpleEvent) -> None:
+    def __init__(self, parent: tk.Misc, event: ExistingEvent | Event) -> None:
         super().__init__(parent)
         initial_meal = backend.meals.get_simple_meal(event.meal_id)
 

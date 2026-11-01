@@ -202,23 +202,26 @@ class MealIngredientsQuery():
             )
 
 
-class SimpleEventQuery(SelectDB):
+class EventQuery(SelectDB):
     select_query = 'SELECT e.eventID, e.date, e.time, m.mealID, m.name ' \
                    'FROM Event AS e ' \
                    'JOIN Meal AS m ' \
                        'ON e.mealID = m.mealID '
     accepted_filters = {'meal' : 'm.mealID', 'id': 'e.eventID', 'date': 'e.date', 'time': 'e.time'}
     accepted_sorts = {'date/time': 'e.date, e.time', 'date': 'e.date', 'meal' : 'm.mealID', 'id': 'e.eventID', 'time': 'e.time'}
-    
 
+    delete_table_name = 'Event'
+    delete_id_name = 'eventID'
 
-class DetailedEventQuery(SelectDB):
     @staticmethod
     def run_insert(date: str,
                    time: str,
                    meal_id: int
                    ) -> None:
-        pass
+        with get_connection() as con:
+            cur = con.cursor()
+            cur.execute('INSERT INTO Event(date, time, mealID) VALUES (?,?,?)', (date, time, meal_id))
+
 
     @staticmethod
     def run_update(event_id: int,
@@ -226,4 +229,8 @@ class DetailedEventQuery(SelectDB):
                    time: str,
                    meal_id: int
                    ) -> None:
-        pass
+        with get_connection() as con:
+            cur = con.cursor()
+            cur.execute('UPDATE Event '\
+                        'SET date = ?, time = ?, mealID = ? '\
+                        'WHERE eventID = ?', (date, time, meal_id, event_id))

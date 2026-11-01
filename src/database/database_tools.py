@@ -62,7 +62,7 @@ class SelectDB:
                 if not(isinstance(filter_value, tuple) and len(filter_value) == 2):
                     raise ValueError('BETWEEN requires filter_value to be a (start, end) tuple')
                 editable_query +='BETWEEN ? AND ? '
-                filter_tuple = (filter_value,)
+                filter_tuple = filter_value
             else:
                 editable_query += 'LIKE ? '
                 filter_tuple = (f'%{filter_value}%',)
