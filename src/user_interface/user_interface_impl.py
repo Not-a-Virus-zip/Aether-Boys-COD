@@ -21,6 +21,7 @@ from ..backend import (
     ingredient_list as il_backend,
     virtual_pantry as vp_backend,
     meal_catalog as mc_backend,
+    event as ev_backend,
 )
 
 
@@ -41,6 +42,7 @@ class Backend:
     ingredients: il_backend.IngredientList
     pantry: vp_backend.VirtualPantry
     meals: mc_backend.MealCatalog
+    event: ev_backend.EventManager
 
 class Application:
     """The class that runs the application and handles any setup for the backend and database."""
@@ -51,11 +53,12 @@ class Application:
     def __init__(self):
         self.root = tk.Tk()
         self.root.wm_title("Meal Planner")
-        self.root.geometry("550x400")
+        self.root.geometry("750x600")
         self.backend = Backend(
             il_backend.IngredientList(),
             vp_backend.VirtualPantry(),
             mc_backend.MealCatalog(),
+            ev_backend.EventManager(),
         )
         self.interface = UserInterface(self.root, self.backend)
 
