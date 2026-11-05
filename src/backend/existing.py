@@ -35,7 +35,8 @@ def _matches(value, expected_type) -> bool:
 # When calling this function, the `self` parameter can be any type that follows the `IsDataclass` protocol,
 # and the return value will have the same type.
 def modify[T: IsDataclass](self: T, **kwargs) -> T:
-    assert "id" not in kwargs, "Cannot modify id of existing database entry"
+    if "id"  in kwargs:
+        raise NameError("Cannot modify id of existing database entry")
     return dataclasses.replace(self, **kwargs)
 
 def type_check[T: IsDataclass](dataclass: type[T], values: tuple[typing.Any, ...]):

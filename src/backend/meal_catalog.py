@@ -47,6 +47,24 @@ class ExistingSimpleMeal(SimpleMeal):
 class ExistingDetailedMeal(DetailedMeal):
     id: int
 
+class NeverUse:
+    pass
+
+def unit_test_typechecking():
+    correct_values = ExistingDetailedMeal("", "kjhgfd", "fdsg", "dskfgjh", "jhdflgk", (), 5)
+    fields = dataclasses.fields(ExistingDetailedMeal)
+    for field in fields:
+        try:
+            correct_values.modify(**{field.name: NeverUse()})
+        except TypeError as err:
+            pass # test pass
+            continue
+        except NameError as err:
+            continue
+        raise Exception(f"Failed to catch type error on field: {field}")
+
+
+
 class MealCatalog:
     def get_simple_meals(self, sort_column: str = "name", asc: bool = True, search_term: str = "") -> list[ExistingSimpleMeal]:
         filter_value = search_term or None # if search_term is blank, filter value is None
