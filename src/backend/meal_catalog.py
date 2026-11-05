@@ -56,10 +56,7 @@ def unit_test_typechecking():
     for field in fields:
         try:
             correct_values.modify(**{field.name: NeverUse()})
-        except TypeError as err:
-            pass # test pass
-            continue
-        except NameError as err:
+        except (TypeError, NameError) as err:
             continue
         raise Exception(f"Failed to catch type error on field: {field}")
 
