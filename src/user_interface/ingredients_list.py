@@ -176,10 +176,11 @@ class IngredientEditMenu(em.EditMenuWithSearcher):
         self.ingredient_name        = self.insert("Ingredient Name", em.CheckedEntry(self.frame, name_check, name))
         self.tag                    = self.insert_searcher("Tag", em.OpenDbSearchOptions(self.frame, "Tags", self._search_tags, initial_value=tag))
         self.ingredient_measurement = self.insert_searcher("Measurement Type", em.OpenDbSearchOptions(self.frame, "Measurements", self._search_measurements, initial_value=measure))
-        self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
-
-        self.cancel_button.config(command=container.destroy)
-        self.save_button.config(command=self.save_and_close)
+        self.cancel_button, self.save_button = self.finish_construction([
+            ("Cancel", container.destroy),
+            1,
+            ("Save Changes", self.save_and_close),
+        ])
 
     def _search_tags(self, user_input: str) -> list[str]:
         self.tag_search_results = self.ingr_list.backend.tags_in_use(user_input)

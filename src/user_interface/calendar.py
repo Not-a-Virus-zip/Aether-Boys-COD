@@ -7,7 +7,8 @@ from tkinter import ttk
 import calendar
 import datetime as dt
 import enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from tkinter import font
 
 from . import (
     edit_menu as em,
@@ -93,6 +94,29 @@ class Calendar:
         now = dt.datetime.now()
         self.switch_calendar_to(now.date().replace(day=1))
 
+        button_frame, (
+            self.delete_button,
+            self.add_button,
+            self.edit_button,
+        ) = ui.make_buttons(
+            self.frame, (
+                ("Delete Selected", self.press_delete_button),
+                ("Add New", self.press_add_button),
+                ("Edit Selected", self.press_edit_button),
+            ),
+            button_weight=1
+        )
+        button_frame.grid(row=2, column=0, sticky="nsew")
+
+    def press_delete_button(self):
+        pass
+
+    def press_add_button(self):
+        pass
+
+    def press_edit_button(self):
+        pass
+
     def _on_year_selected(self, event: tk.Event):
         selection = self.month_box.get()
         try:
@@ -118,6 +142,9 @@ class Calendar:
         new_year = self.visible_date.year
         self.year_box.config(values=list(map(str, range(new_year - YEAR_SELECT_RANGE, new_year + YEAR_SELECT_RANGE))))
         self.year_box.current(YEAR_SELECT_RANGE)
+
+    def refresh_calendar(self):
+        self.switch_calendar_to(self.visible_date)
 
     def switch_calendar_to(self, new_date: dt.date):
         """Sets the calendar to the month containing the given date"""
@@ -150,20 +177,20 @@ class Calendar:
                 panel.number_label.grid()
                 panel.event_display.grid()
                 for ev in panel.events:
-                    ev.button.destroy()
+                    ev.destroy()
                 panel.events.clear()
         
         events = self.backend.event.get_simple_event(*month_span(self.visible_date))
         for event in events:
             try:
-                tgt_panel = days[event.scheduled_at.day]
+                tgt_panel = days[event.scheduled_at.day-1]
             except IndexError as e:
                 # bad db info?
                 print(f"IndexError: {e}") # TODO: Logging
                 continue
             event_bttn = ttk.Button(tgt_panel.event_display, text=event.meal_name, style="EventDisplay.TButton")
             event_bttn.grid(row=len(tgt_panel.events), column=0, sticky="ew")
-            tgt_panel.events.append(EventDisplay(event, event_bttn, self.backend))
+            tgt_panel.events.append(EventDisplay(event, event_bttn, self.backend, self))
 
 @dataclass
 class CalendarPanel:
@@ -172,21 +199,50 @@ class CalendarPanel:
     event_display: ttk.Frame
     events: list[EventDisplay]
 
+test_str = "dskfjgh" * 100000
+
 @dataclass
 class EventDisplay:
     event: ExistingEvent
     button: ttk.Button
     backend: ui.Backend
+    cal: Calendar
+    _full_text: str = field(init=False)
+    _font: font.Font = field(init=False)
+    _bind_id: str = field(init=False)
 
     def __post_init__(self):
         self.button.config(command=self._on_click)
+        self._full_text = self.button["text"]
+        self._font = font.Font(font=ttk.Style().lookup(self.button["style"], "font"))
+        self._bind_id = self.button.bind("<Configure>", self._on_resize)
+
+    def _on_resize(self, event: tk.Event):
+        new_width = event.width
+        display_text = self._full_text[:100]
+        if self._font.measure(self._full_text) < new_width:
+            self.button.config(text=self._full_text)
+        partial = self._full_text
+        shrunk = False
+
+        while partial and self._font.measure(f"{partial}-") >= max(new_width - 8, 0):
+            partial = partial[:-1]
+            shrunk = True
+        if shrunk:
+            partial = f"{partial}-"
+        self.button.config(text=partial)
+        
     
     def _on_click(self):
         em.show_edit_menu(
             self.button.winfo_toplevel(),
             "Edit Event",
-            lambda tl: EditEvent(tl, self.backend, self.event).frame,
+            lambda tl: EditEvent(tl, self.cal, self.backend, self.event).frame,
         )
+
+    def destroy(self):
+        self.button.unbind("<Configure>", self._bind_id)
+        self.button.destroy()
 
 AVG_MONTH_LEN = 365.25 / 12
 
@@ -222,17 +278,60 @@ class RepeatOptions(enum.Enum):
 
 
 class EditEvent(em.EditMenuWithSearcher):
-    def __init__(self, parent: tk.Misc, backend: ui.Backend, event: ExistingEvent | Event) -> None:
-        super().__init__(parent)
+    def __init__(self, container: tk.Misc, cal: Calendar, backend: ui.Backend, event: ExistingEvent | Event) -> None:
+        super().__init__(container)
         initial_meal = backend.meals.get_simple_meal(event.meal_id)
 
         self.backend = backend
+        self.calendar = cal
+        self.container = container
+        self.event = event
+        self.time = self.insert("Time", em.CheckedEntry(self.frame, em.CheckForException("Unknown Time", dt.time.fromisoformat), event.scheduled_at.timetz().isoformat()))
+        self.date = self.insert("Date", em.DateEntry(self.frame, event.scheduled_at.date()))
         self.meal = self.insert_searcher(
             "Meal",
-            em.ClosedDbSearchOptions(self.frame, "Meal", "Missing Meal", self._search_meal, lambda m: m.name, initial_value=initial_meal)
+            em.ClosedDbSearchOptions(
+                self.frame,
+                "Meal",
+                "Missing Meal",
+                self._search_meal,
+                lambda m: m.name,
+                initial_value=initial_meal,
+                selection_callback=self._on_selected_meal_change)
         )
-        self.time = self.insert("Time", em.Entry(self.frame))
-        self.date = self.insert("Date", em.DateEntry(self.frame))
-    
+        self.meal_description = self.insert("Description", em.WrappingDisplay(self.frame, "", width=40))
+        self.meal_recipe = self.insert("Recipe", em.WrappingDisplay(self.frame, "", width=40))
+        self._on_selected_meal_change(initial_meal)
+
+        self.cancel_button, self.save_button = self.finish_construction([("Cancel", container.destroy), 1, ("Save Changes", self.save_and_close)])
+
+    def _on_selected_meal_change(self, selected_meal: ExistingSimpleMeal | None):
+        if selected_meal is None:
+            self.meal_description.elem.set_text("N/A")
+            self.meal_recipe.elem.set_text("N/A")
+        else:
+            self.meal_description.elem.set_text(selected_meal.description.strip() or "N/A")
+            detailed_meal = self.backend.meals.get_detailed_meal(selected_meal.id)
+            self.meal_recipe.elem.set_text(detailed_meal.recipe.strip() or "N/A")
+
     def _search_meal(self, query: str) -> list[ExistingSimpleMeal]:
         return self.backend.meals.get_simple_meals(search_term=query)
+
+    def save_and_close(self):
+        if not self.check_all_input_and_show_errors():
+            # TODO: Pop-up error?
+            return
+        new_meal = self.meal.elem.get_selection()
+        assert new_meal is not None
+        new_time = dt.time.fromisoformat(self.time.elem.get_text())
+        new_date = self.date.elem.get_date()
+        new_dt = dt.datetime.combine(new_date, new_time)
+        match self.event:
+            case ExistingEvent() as e:
+                self.backend.event.update_event(e.modify(meal_id=new_meal.id, meal_name=new_meal.name, scheduled_at=new_dt))
+            case Event() as e:
+                self.backend.event.create_event(Event(new_meal.id, new_dt))
+
+        self.calendar.refresh_calendar()
+        self.container.destroy()
+    

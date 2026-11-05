@@ -5,7 +5,8 @@ from textwrap import wrap
 from tkinter import ttk
 from tkinter import scrolledtext as scrtxt
 import tkinter as tk
-from typing import Callable, Iterable, Protocol, override
+import datetime as dt
+from typing import Any, Callable, Iterable, Protocol, override
 import enum
 
 import pint
@@ -195,6 +196,12 @@ class Display(MenuWidget):
     def set_text(self, text: str):
         self.display.config(text=text)
 
+class WrappingDisplay(Display):
+    def __init__(self, container: ttk.Frame, initial_text: str, width=80):
+        super().__init__(container, initial_text)
+        self.display.config(width=width)
+        self.display.config(wraplength=max(self.display.winfo_reqwidth() - 4, 0))
+
 class InputCheck(Protocol):
     def identify_issues(self, text: str) -> str | None:
         """If nothing is wrong, return None, otherwise, return a string describing the problem."""
@@ -208,6 +215,19 @@ class SimpleCheck(InputCheck):
     @override
     def identify_issues(self, text: str) -> str | None:
         return None if self.check(text) else self.reason
+
+@dataclass
+class CheckForException(InputCheck):
+    reason: str
+    check: Callable[[str], Any]
+
+    @override
+    def identify_issues(self, text: str) -> str | None:
+        try:
+            self.check(text)
+        except Exception:
+            return self.reason
+        return None
 
 class Entry(MenuWidget):
     input_field: ttk.Entry
@@ -600,5 +620,9 @@ class Image(MenuWidget):
     def insert(self, row: int, column: int):
         self.image.grid(row=row, column=column, sticky="nw")
 
-class DateEntry(Entry):
-    pass # TODO: Finish
+class DateEntry(CheckedEntry):
+    def __init__(self, container: ttk.Frame, initial_date: dt.date):
+            super().__init__(container, CheckForException("Not a valid date", dt.date.fromisoformat), initial_date.isoformat())
+
+    def get_date(self) -> dt.date:
+        return dt.date.fromisoformat(self.get_text())

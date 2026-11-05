@@ -79,7 +79,7 @@ class MealCatalog:
             case [(id, name, tag, description)]:
                 return ExistingSimpleMeal(name, bt.denull(tag), bt.denull(description), id)
             case more_than_one:
-                raise Exception(f"Found more than one meal ({len(more_than_one)}) with id = {meal_id}. (??)")
+                raise Exception("Unreachable")
 
     def get_detailed_meal(self, meal_id: int) -> ExistingDetailedMeal:
         meal_ingredients = db.DetailedMealQuery.run_select(filter_column='id', filter_value=str(meal_id), exact=True)
