@@ -123,8 +123,8 @@ class SimpleMealQuery(SelectDB):
 
     select_query = 'SELECT mealID, name, tag, description ' \
                    'FROM Meal '
-    accepted_filters = {'name': 'name', 'id': 'id', 'tag': 'tag'}
-    accepted_sorts = {'name': 'name', 'id': 'id', 'tag': 'tag'}
+    accepted_filters = {'name': 'name', 'id': 'mealId', 'tag': 'tag'}
+    accepted_sorts = {'name': 'name', 'id': 'mealId', 'tag': 'tag'}
 
 
 class DetailedMealQuery(SelectDB):

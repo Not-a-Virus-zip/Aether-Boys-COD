@@ -27,6 +27,12 @@ class Calendar:
             # Note: our typechecker gives style.map the wrong return type
             background=[("disabled", "light gray"), *style.map("CalendarFrame.TFrame", "background")], # pyright: ignore[reportArgumentType]
         )
+        style.map("EventDisplay.TButton",
+                    # Note: our typechecker gives style.map the wrong return type
+                    anchor=(("w",),),
+                )
+
+        self._selected_event: ExistingEvent | None = None
 
         self.backend = backend
         self.cal = calendar.Calendar(firstweekday=calendar.SUNDAY)
@@ -144,7 +150,7 @@ class Calendar:
                 panel.number_label.grid()
                 panel.event_display.grid()
                 for ev in panel.events:
-                    ev.destroy()
+                    ev.button.destroy()
                 panel.events.clear()
         
         events = self.backend.event.get_simple_event(*month_span(self.visible_date))
@@ -155,11 +161,9 @@ class Calendar:
                 # bad db info?
                 print(f"IndexError: {e}") # TODO: Logging
                 continue
-            event_lbl = ttk.Label(tgt_panel.event_display, text=event.meal_name)
-            event_lbl.grid(row=len(tgt_panel.events), column=0, sticky="ew")
-            tgt_panel.events.append(event_lbl)
-            
-
+            event_bttn = ttk.Button(tgt_panel.event_display, text=event.meal_name, style="EventDisplay.TButton")
+            event_bttn.grid(row=len(tgt_panel.events), column=0, sticky="ew")
+            tgt_panel.events.append(EventDisplay(event, event_bttn, self.backend))
 
 @dataclass
 class CalendarPanel:
@@ -168,7 +172,21 @@ class CalendarPanel:
     event_display: ttk.Frame
     events: list[EventDisplay]
 
-type EventDisplay = ttk.Label
+@dataclass
+class EventDisplay:
+    event: ExistingEvent
+    button: ttk.Button
+    backend: ui.Backend
+
+    def __post_init__(self):
+        self.button.config(command=self._on_click)
+    
+    def _on_click(self):
+        em.show_edit_menu(
+            self.button.winfo_toplevel(),
+            "Edit Event",
+            lambda tl: EditEvent(tl, self.backend, self.event).frame,
+        )
 
 AVG_MONTH_LEN = 365.25 / 12
 
