@@ -61,15 +61,11 @@ class IngredientList:
 
     def update_ingredient(self, modified: ExistingIngredient):
         """Store a modified version of an ingredient, replacing the previous version"""
-        # if f'{modified.tag}'.strip() == '':
-        #     modified = modified.modify(tag = None)
         iq.run_update(modified.id, modified.name, bt.renull(modified.tag), modified.measurement_type.id)
 
     def create_ingredient(self, name: str, tag: str, measure_type: int):
         """Create a new ingredient"""
-        # if f'{tag}'.strip() == '':
-        #     tag = None
-        iq.run_insert(name, bt.renull(tag)  , measure_type)
+        iq.run_insert(name, bt.renull(tag), measure_type)
 
     # Pulls up a list of available MeasurementTypes(?)
     def search_ingredient_units(self, query: str) -> list[str]:  #TODO: list[pint.Unit] 
