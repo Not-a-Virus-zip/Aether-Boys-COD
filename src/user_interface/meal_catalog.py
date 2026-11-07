@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Iterable
@@ -20,7 +21,7 @@ from ..backend import (
 from ..backend.meal_catalog import ExistingSimpleMeal, ExistingDetailedMeal, DetailedMeal
 from ..backend.ingredient_list import ExistingIngredient
 
-from .treeview_tools import ScrollableTreeview, link_treeview_to_scrollbar, AutoSorter
+from .treeview_tools import ScrollableTreeview, add_double_click_command, link_treeview_to_scrollbar, AutoSorter
 
 class MealCatalog:
     """Constructs and controls the meal catalog UI"""
@@ -32,7 +33,6 @@ class MealCatalog:
     add_button: ttk.Button
     edit_button: ttk.Button
     catalog_contents: list[ExistingSimpleMeal]
-
 
     def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
         self.backend = backend
@@ -73,13 +73,17 @@ class MealCatalog:
         self.refresh_catalog()
 
         tv.bind("<<TreeviewSelect>>", self._on_selection_change)
+        self.meal_display.add_double_click_command("mc", self._on_double_click)
+
+    def _on_double_click(self, tgt_str: str):
+        self.launch_editor(self.catalog_contents[int(tgt_str)])
 
     def _autosorter_command(self, query: str, column: str, asc: bool):
         if len(self.catalog_contents) > 0:
             self.meal_display.treeview.delete(*range(len(self.catalog_contents)))
         self.catalog_contents = self.backend.meals.get_simple_meals(column, asc)
         for i, meal in enumerate(self.catalog_contents):
-            self.meal_display.treeview.insert("", "end", id=i, text="", values=[meal.name, meal.tag, meal.description])
+            self.meal_display.treeview.insert("", "end", id=i, text="", values=[meal.name, meal.tag, meal.description], tags=["mc"])
     
     def refresh_catalog(self):
         self.auto_sorter.refresh()
@@ -123,7 +127,10 @@ class MealCatalog:
     def press_edit_button(self):
         selection = self.get_selected()
         assert selection is not None, "Edit button should be disabled when nothing is selected"
-        full_meal = self.backend.meals.get_detailed_meal(selection.id)
+        self.launch_editor(selection)
+
+    def launch_editor(self, meal: ExistingSimpleMeal):
+        full_meal = self.backend.meals.get_detailed_meal(meal.id)
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Meal",
@@ -209,6 +216,7 @@ class MealEditMenu(em.EditMenu):
 class IngrCurrentPanel:
     def __init__(self, frame: ttk.Frame, starting_ingredients: Iterable[tuple[ExistingIngredient, pint.Quantity]]) -> None:
         self.ingr_quantities = ttk.Treeview(frame, columns=["name", "qty"], show="headings")
+        add_double_click_command(self.ingr_quantities, "ci", self._on_double_click)
         scrollbar = ttk.Scrollbar(frame)
         link_treeview_to_scrollbar(self.ingr_quantities, scrollbar)
         self.ingr_quantities.grid(row=1, column=2, sticky="new")
@@ -258,6 +266,21 @@ class IngrCurrentPanel:
 
         self.auto_sorter = AutoSorter(self.ingr_quantities, self._autosorter_command)
         self.update_quantity_list()
+
+    def _on_double_click(self, tgt_str: str):
+        self.ingr_quantities.selection_set(tgt_str)
+        self.focus_quantity_editor()
+
+    def focus_quantity_editor(self):
+        full_text = self.quantity_var.get()
+        partial = full_text.lstrip()
+        lhs = len(full_text) - len(partial)
+        space_location = partial.rstrip().find(" ")
+        if space_location == -1:
+            space_location = tk.END
+        self.quantity_editor.focus()
+        self.quantity_editor.icursor(space_location)
+        self.quantity_editor.selection_range(lhs, space_location)
 
     def _disable_qty_editor(self):
         self.quantity_editor.state(("disabled",))
@@ -384,7 +407,7 @@ class IngrCurrentPanel:
         }[column]
         self.current_ingrs.sort(key=key, reverse=not asc)
         for i, (ingr, qty) in enumerate(self.current_ingrs):
-            self.ingr_quantities.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
+            self.ingr_quantities.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)], tags=["ci"])
         if selected_ingr is not None:
             self.editing_index = self.current_ingrs.index(selected_ingr)
             self.ingr_quantities.selection_set(self.editing_index)
@@ -398,7 +421,6 @@ class IngrCurrentPanel:
 
     def is_ingr_not_in_meal(self, ing: ExistingIngredient) -> bool:
         return ing.id not in self.current_ingredient_ids
-
 
 class IngrAddPanel:
     other_panel: IngrCurrentPanel
@@ -414,11 +436,11 @@ class IngrAddPanel:
         self.other_panel = other_panel
         self.ing_backend = ing_backend
         self.ingr_display = ttk.Treeview(frame, columns=["name", "tag", "unit"], show="headings")
+        add_double_click_command(self.ingr_display, "ni", self._on_double_click)
         scrollbar = ttk.Scrollbar(frame)
         link_treeview_to_scrollbar(self.ingr_display, scrollbar)
         self.ingr_display.grid(row=1, column=0, sticky="new")
         scrollbar.grid(row=1, column=1, sticky="ns")
-
 
         self.search_frame = ttk.Frame(frame)
         self.search_frame.columnconfigure(0, weight=4)
@@ -454,6 +476,11 @@ class IngrAddPanel:
 
         self.update_ingr_list()
 
+    def _on_double_click(self, tgt_str: str):
+        if not self.ingr_display.selection():
+            self.ingr_display.selection_set(tgt_str)
+        self.on_press_add_button()
+
     def on_press_add_button(self):
         self.other_panel.add_ingredients(tuple(
             self.displayed_ingrs[int(index)]
@@ -468,7 +495,7 @@ class IngrAddPanel:
             self.ingr_display.delete(*range(len(self.displayed_ingrs)))
         self.displayed_ingrs = new_list
         for i, ingr in enumerate(self.displayed_ingrs):
-            self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])
+            self.ingr_display.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name], tags=["ni"])
 
     def update_ingr_list(self):
         self.auto_sorter.refresh()

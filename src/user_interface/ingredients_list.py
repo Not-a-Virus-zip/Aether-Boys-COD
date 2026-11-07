@@ -73,13 +73,17 @@ class IngredientsList:
 
         bottom_b_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
         tv.bind("<<TreeviewSelect>>", self._on_selection_change)
+        self.ingr_display.add_double_click_command("il", self._on_double_click)
+        
+    def _on_double_click(self, tgt_str: str):
+        self.launch_editor(self.ingr_list[int(tgt_str)])
 
     def _autosorter_command(self, query: str, column: str, asc: bool):
         if len(self.ingr_list) > 0:
             self.ingr_display.treeview.delete(*range(len(self.ingr_list)))
         self.ingr_list = self.backend.load_ingredient_list(sort_mode=column, asc=asc)
         for i, ingr in enumerate(self.ingr_list):
-            self.ingr_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name])# ui.fmt_qty(ingr.measurement_type)])
+            self.ingr_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name], tags=["il"])
 
     def refresh_ingredients(self, also_refresh_pantry=True):
         "Propagate changes from the database into the ui."
@@ -136,11 +140,13 @@ class IngredientsList:
     def press_edit_button(self):
         selection = self.get_selected()
         assert selection is not None, "Edit button should be disabled when nothing is selected"
-        selected_ingredient = selection
+        self.launch_editor(selection)
+        
+    def launch_editor(self, ingr: ExistingIngredient):
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
-            lambda tl: IngredientEditMenu(self, tl, selected_ingredient).frame
+            lambda tl: IngredientEditMenu(self, tl, ingr).frame
         )
 
 class IngredientEditMenu(em.EditMenuWithSearcher):

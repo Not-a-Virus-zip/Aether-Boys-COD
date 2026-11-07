@@ -69,9 +69,13 @@ class VirtualPantry:
         buttons_frame.grid(row=1, column=0, sticky="ew")
 
         tv.bind("<<TreeviewSelect>>", self._on_selection_change)
+        self.pantry_display.add_double_click_command("vp", self._on_double_click)
 
     def refresh_pantry(self):
         self.auto_sorter.refresh()
+
+    def _on_double_click(self, tgt_str: str):
+        self.launch_editor(*self.pantry_contents[int(tgt_str)])
 
     def _autosorter_command(self, query: str, column: str, asc: bool):
         if len(self.pantry_contents) > 0:
@@ -82,7 +86,7 @@ class VirtualPantry:
         elif not asc:
             self.pantry_contents.reverse()
         for i, (ingr, qty) in enumerate(self.pantry_contents):
-            self.pantry_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
+            self.pantry_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)], tags=["vp"])
 
     def _on_selection_change(self, tv: tk.Event) -> object:
         num_selected = self.get_num_selected()
@@ -127,11 +131,14 @@ class VirtualPantry:
     def press_edit_button(self):
         selection = self.get_selected()
         assert len(selection) == 1, "Edit button should be disabled when the selection is not exactly one ingredient"
-        name, qty = selection[0]
+        ingr, qty = selection[0]
+        self.launch_editor(ingr, qty)
+
+    def launch_editor(self, ingr: ExistingIngredient, qty: pint.Quantity):
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
-            lambda tl: VPantryEditMenu(self, tl, name, qty).frame
+            lambda tl: VPantryEditMenu(self, tl, ingr, qty).frame
         )
 
 class VPantryEditMenu(em.EditMenu):
