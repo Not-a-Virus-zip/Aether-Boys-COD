@@ -3,12 +3,13 @@ import pint
 from dataclasses import dataclass, field
 from ..database.database_logic import MeasureTypeQuery as mtq
 from . import existing
-units: pint.UnitRegistry = pint.UnitRegistry()
+
+unit_reg: pint.UnitRegistry = pint.UnitRegistry()
 
 def interpret_quantity(quantity_expression: str, unit_constraint: pint.Unit | None = None) -> pint.Quantity:
     quantity_expression = quantity_expression.strip()
     if quantity_expression:
-        quantity = units.parse_expression(quantity_expression)
+        quantity = unit_reg.parse_expression(quantity_expression)
         if unit_constraint is None:
             return quantity
         if quantity.unitless:
@@ -22,9 +23,9 @@ def interpret_quantity(quantity_expression: str, unit_constraint: pint.Unit | No
 
 def get_units(unit_name: str) -> pint.Unit:
     try:
-        return getattr(units, unit_name)
+        return getattr(unit_reg, unit_name)
     except pint.UndefinedUnitError:
-        return units.dimensionless
+        return unit_reg.dimensionless
         # units.define(f"{unit_name} = ")
 
 @dataclass
@@ -36,7 +37,7 @@ class MeasureType:
     pint_unit: pint.Unit = field(init=False)
 
     def __post_init__(self):
-        self.pint_unit = getattr(units, self.name)
+        self.pint_unit = getattr(unit_reg, self.name)
         existing.type_check_self(self)
 
 

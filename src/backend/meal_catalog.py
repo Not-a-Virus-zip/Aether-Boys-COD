@@ -92,7 +92,7 @@ class MealCatalog:
                 mi_qty, mi_measure_id, mi_measure_name = ingredient[11:14]  # MealIngredient Information
 
                 ing = il.ExistingIngredient(ing_name, bt.denull(ing_tag), units.MeasureType(ing_measure_id, ing_measure_name), ing_id)
-                ingredients.append((ing, units.units.Quantity(mi_qty, mi_measure_name)))
+                ingredients.append((ing, units.unit_reg.Quantity(mi_qty, mi_measure_name)))
 
         return ExistingDetailedMeal(**asdict(meal), picture=bt.denull(picture), recipe=bt.denull(recipe), ingredients=tuple(ingredients))
 

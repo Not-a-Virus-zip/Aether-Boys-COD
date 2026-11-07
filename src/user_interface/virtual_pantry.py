@@ -183,7 +183,7 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
         super().__init__(container)
 
         self.ingredient_name = self.insert_searcher("Ingredient", em.ClosedDbSearchOptions(self.frame, "Ingredients", "Missing Ingredient", self._search, lambda i: i.name, selection_callback=self._on_ingredient_change))
-        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, 0 * units.units.dimensionless, None))
+        self.amount          = self.insert("Quantity", em.QuantityEntry(self.frame, 0 * units.unit_reg.dimensionless, None))
         self.cancel_button, self.save_button = self.finish_construction(["Cancel", 1, "Save Changes"])
         self.cancel_button.configure(command=container.destroy)
         self.save_button.configure(command=self.save_and_close)
