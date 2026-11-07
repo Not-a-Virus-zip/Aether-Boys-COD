@@ -234,3 +234,39 @@ class EventQuery(SelectDB):
             cur.execute('UPDATE Event '\
                         'SET date = ?, time = ?, mealID = ? '\
                         'WHERE eventID = ?', (date, time, meal_id, event_id))
+
+class ShoppingListQuery():
+    @staticmethod
+    def run_select_owned_ingredients(start_date: str, end_date: str)-> list[tuple]:
+        with get_connection() as con:
+            cur = con.cursor()
+            rows = cur.execute('SELECT vp.ingredientID, vp.qtyHave, vp.measureID, mt.name ' \
+            'FROM VirtualPantry AS vp ' \
+            'JOIN MeasureType AS mt ON mt.measureID = vp.measureID ' \
+            'WHERE vp.ingredientID IN (' \
+                'SELECT mi.ingredientID ' \
+                'FROM Event AS e ' \
+                'JOIN MealIngredient AS mi ON mi.mealID = e.mealID '\
+                'WHERE e.date BETWEEN ? AND ?)', (start_date, end_date))
+        return rows.fetchall()
+
+    @staticmethod
+    def run_select_needed_ingredients(start_date: str, end_date: str)-> list[tuple]:
+        with get_connection() as con:
+            cur = con.cursor()
+            rows = cur.execute(
+                """
+                SELECT mi.ingredientID,
+                       i.name,
+                       mi.qty,
+                       mi.measureID,
+                       mt.name AS unit
+                FROM Event AS e
+                JOIN MealIngredient AS mi ON mi.mealID = e.mealID
+                JOIN Ingredient AS i ON i.ingredientID = mi.ingredientID
+                JOIN MeasureType AS mt ON mt.measureID = mi.measureID
+                WHERE e.date BETWEEN ? AND ?
+                """,
+                (start_date, end_date)
+            )
+        return rows.fetchall()
