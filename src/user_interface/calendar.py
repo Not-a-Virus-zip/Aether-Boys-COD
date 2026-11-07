@@ -7,8 +7,9 @@ from tkinter import ttk
 import calendar
 import datetime as dt
 import enum
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from tkinter import font
+from tkinter import messagebox
 
 from . import (
     edit_menu as em,
@@ -18,33 +19,62 @@ from ..backend.meal_catalog import ExistingSimpleMeal
 from ..backend.event import Event, ExistingEvent
 
 YEAR_SELECT_RANGE = 50
+EVENT_NAME_MAX_DISPLAY_LEN_ON_CALENDAR = 50
+
+mk_indent = lambda n: " " * n * 4
+
+def do_list(l, indent, wrapper):
+    inner_indent = mk_indent(indent+1)
+    s = wrapper[0]
+    for thing in l:
+        s += f"\n{inner_indent}{prettiffy(thing, indent+1)},"
+    s += "\n" + mk_indent(indent) + wrapper[1]
+    return s
+
+def prettiffy(n, indent=0) -> str:
+    match n:
+        case list() as l:
+            return do_list(l, indent, "[]")
+        case tuple() as t:
+            return do_list(t, indent, "()")
+        case dict() as d:
+            indent_prefix = mk_indent(indent+1)
+            s = "{"
+            for name, thing in d.items():
+                s += f"\n{indent_prefix}{name}: {prettiffy(thing, indent+1)},"
+            s += "\n" + mk_indent(indent) + "}"
+            return s
+        # case other:
+        #     raise TypeError(f"Encountered {type(other).__name__}")
+        case other:
+            return str(other)
+
+def add_calendar_styles(parent: tk.Misc):
+    style = ttk.Style(parent)
+    style.map("CalendarFrame.TFrame",
+        # Note: our typechecker gives style.map the wrong return type
+        background=[("disabled", "light gray"), *style.map("TFrame", "background")], # pyright: ignore[reportArgumentType]
+    )
+    style.map("EventDisplay.TButton",
+        anchor=[("w",)],
+    )
 
 class Calendar:
     name = "Calendar"
 
     def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
-        style = ttk.Style(parent)
-        style.map("CalendarFrame.TFrame",
-            # Note: our typechecker gives style.map the wrong return type
-            background=[("disabled", "light gray"), *style.map("CalendarFrame.TFrame", "background")], # pyright: ignore[reportArgumentType]
-        )
-        style.map("EventDisplay.TButton",
-                    # Note: our typechecker gives style.map the wrong return type
-                    anchor=(("w",),),
-                )
-
-        self._selected_event: ExistingEvent | None = None
-
+        add_calendar_styles(parent)
+        self._selected_event: EventDisplay | None = None
         self.backend = backend
         self.cal = calendar.Calendar(firstweekday=calendar.SUNDAY)
 
         self.frame = ttk.Frame(parent, name="calendar", padding=20)
-        cal_frame = ttk.Frame(self.frame, relief=tk.RIDGE, padding=2)
+        cal_frame = ttk.Frame(self.frame, relief="groove", padding=2)
         self.frame.rowconfigure(1, weight=1)
         self.frame.columnconfigure(0, weight=1)
         cal_frame.grid(row=1, column=0, sticky="nsew")
         
-        time_selector_frame = ttk.Frame(self.frame, relief="groove")
+        time_selector_frame = ttk.Frame(self.frame, relief="groove", padding=2)
 
         left_b = ttk.Button(time_selector_frame, text="<", width=2, command=lambda: self.shift_month(-1))
         right_b = ttk.Button(time_selector_frame, text=">", width=2, command=lambda: self.shift_month(1))
@@ -55,13 +85,17 @@ class Calendar:
         self.year_box = ttk.Combobox(time_selector_frame, width=10, justify=tk.CENTER, postcommand=self._get_year_options)
         self.year_box.bind("<<ComboboxSelected>>", self._on_year_selected)
 
-        for n in 0, 4:
+        for n in 1, 5:
             time_selector_frame.columnconfigure(n, weight=1, uniform="time_selector_centering")
+
+        # Note, extra padding so the year_box doesn't spill over the bounds
+        for n in 0, 6:
+            time_selector_frame.columnconfigure(n, minsize=2)
         
-        left_b.grid(row=1, column=1)
-        self.month_box.grid(row=1, column=2)
-        right_b.grid(row=1, column=3)
-        self.year_box.grid(row=1, column=4, sticky="e")
+        left_b.grid(row=1, column=2)
+        self.month_box.grid(row=1, column=3)
+        right_b.grid(row=1, column=4)
+        self.year_box.grid(row=1, column=5, sticky="e")
         time_selector_frame.grid(row=0, column=0, sticky="ew")
         
         for col in range(7):
@@ -91,9 +125,6 @@ class Calendar:
             for column in range(7)
         ]
 
-        now = dt.datetime.now()
-        self.switch_calendar_to(now.date().replace(day=1))
-
         button_frame, (
             self.delete_button,
             self.add_button,
@@ -106,16 +137,53 @@ class Calendar:
             ),
             button_weight=1
         )
+        for b in self.edit_button, self.delete_button:
+            b.state(("disabled",))
+
         button_frame.grid(row=2, column=0, sticky="nsew")
 
+        now = dt.datetime.now()
+        self.switch_calendar_to(now.date().replace(day=1))
+
     def press_delete_button(self):
-        pass
+        event = self._selected_event
+        if event is None:
+            return
+        if messagebox.askokcancel(
+            "Confirm Deletion",
+            f"Are you sure you want to delete \"{event.event.meal_name}\" from your calendar?",
+            icon=messagebox.WARNING,
+            default=messagebox.CANCEL,
+            parent=self.frame,
+        ):
+            self.backend.event.delete_event(event.event)
+            self.refresh_calendar()
 
     def press_add_button(self):
-        pass
+        em.show_edit_menu(
+            self.frame.winfo_toplevel(),
+            "Edit Event",
+            lambda tl: EditEvent(tl, self, self.backend).frame,
+        )
 
     def press_edit_button(self):
-        pass
+        event_disp = self._selected_event
+        if event_disp is None or not event_disp.alive:
+            return
+        event = event_disp.event
+        em.show_edit_menu(
+            self.frame.winfo_toplevel(),
+            "Edit Event",
+            lambda tl: EditEvent(tl, self, self.backend, event).frame,
+        )
+
+    def set_selected_event(self, new_selection: EventDisplay | None):
+        if self._selected_event is not None and new_selection is not self._selected_event and self._selected_event.alive:
+            self._selected_event.set_selected(False)
+        self._selected_event = new_selection
+        new_state = ("disabled" if new_selection is None else "!disabled",)
+        self.edit_button.state(new_state)
+        self.delete_button.state(new_state)
 
     def _on_year_selected(self, event: tk.Event):
         selection = self.month_box.get()
@@ -148,6 +216,8 @@ class Calendar:
 
     def switch_calendar_to(self, new_date: dt.date):
         """Sets the calendar to the month containing the given date"""
+        self.set_selected_event(None)
+
         self.visible_date = new_date
 
         year = self.visible_date.year
@@ -188,9 +258,9 @@ class Calendar:
                 # bad db info?
                 print(f"IndexError: {e}") # TODO: Logging
                 continue
-            event_bttn = ttk.Button(tgt_panel.event_display, text=event.meal_name, style="EventDisplay.TButton")
-            event_bttn.grid(row=len(tgt_panel.events), column=0, sticky="ew")
-            tgt_panel.events.append(EventDisplay(event, event_bttn, self.backend, self))
+            event_disp = EventDisplay(event, self.backend, self, tgt_panel.event_display)
+            event_disp.button.grid(row=len(tgt_panel.events), column=0, sticky="ew")
+            tgt_panel.events.append(event_disp)
 
 @dataclass
 class CalendarPanel:
@@ -199,48 +269,61 @@ class CalendarPanel:
     event_display: ttk.Frame
     events: list[EventDisplay]
 
-test_str = "dskfjgh" * 100000
-
 @dataclass
 class EventDisplay:
     event: ExistingEvent
-    button: ttk.Button
     backend: ui.Backend
     cal: Calendar
+
+    button: ttk.Button = field(init=False)
+    alive: bool = field(init=False, default=True)
+
     _full_text: str = field(init=False)
+    _display_text: str = field(init=False)
     _font: font.Font = field(init=False)
     _bind_id: str = field(init=False)
+    _selected: bool = field(init=False, default=False)
+    _previous_width: int = field(init=False, default=-1)
 
-    def __post_init__(self):
+    parent: InitVar[tk.Misc]
+
+    def __post_init__(self, parent: tk.Misc):
+        self.button = ttk.Button(parent, text=self.event.meal_name, width=0, style="EventDisplay.TButton")
         self.button.config(command=self._on_click)
         self._full_text = self.button["text"]
+        self._display_text = self._full_text[:EVENT_NAME_MAX_DISPLAY_LEN_ON_CALENDAR]
         self._font = font.Font(font=ttk.Style().lookup(self.button["style"], "font"))
         self._bind_id = self.button.bind("<Configure>", self._on_resize)
 
     def _on_resize(self, event: tk.Event):
         new_width = event.width
-        display_text = self._full_text[:100]
-        if self._font.measure(self._full_text) < new_width:
-            self.button.config(text=self._full_text)
-        partial = self._full_text
-        shrunk = False
+        if new_width == self._previous_width:
+            return
+        self._previous_width = new_width
+        bounds = max(new_width - 8, 0)
 
-        while partial and self._font.measure(f"{partial}-") >= max(new_width - 8, 0):
+        if self._font.measure(self._display_text) < bounds:
+            self.button.config(text=self._display_text)
+            return
+        partial = self._display_text[:-2]
+
+        while partial and self._font.measure(f"{partial}-") >= bounds:
             partial = partial[:-1]
-            shrunk = True
-        if shrunk:
-            partial = f"{partial}-"
+
+        partial = f"{partial}-"
         self.button.config(text=partial)
-        
+
+    def set_selected(self, new_state: bool):
+        if new_state != self._selected:
+            self._selected = new_state
+            self.button.state(("pressed" if new_state else "!pressed",))
+            self.cal.set_selected_event(self if new_state else None)
     
     def _on_click(self):
-        em.show_edit_menu(
-            self.button.winfo_toplevel(),
-            "Edit Event",
-            lambda tl: EditEvent(tl, self.cal, self.backend, self.event).frame,
-        )
+        self.set_selected(not self._selected)
 
     def destroy(self):
+        self.alive = False
         self.button.unbind("<Configure>", self._bind_id)
         self.button.destroy()
 
@@ -272,22 +355,28 @@ class DayOfTheWeek(enum.Enum):
     Friday = 5
     Saturday = 6
 
-
 class RepeatOptions(enum.Enum):
     UntilStopDate = "Until stopping date"
 
 
 class EditEvent(em.EditMenuWithSearcher):
-    def __init__(self, container: tk.Misc, cal: Calendar, backend: ui.Backend, event: ExistingEvent | Event) -> None:
+    def __init__(self, container: tk.Misc, cal: Calendar, backend: ui.Backend, event: ExistingEvent | None = None) -> None:
         super().__init__(container)
-        initial_meal = backend.meals.get_simple_meal(event.meal_id)
+        if event is not None:
+            initial_meal = backend.meals.get_simple_meal(event.meal_id) if event is not None else None
+            starting_date = event.scheduled_at.date() if event is not None else cal.visible_date
+            starting_time = event.scheduled_at.timetz().isoformat()
+        else:
+            initial_meal = None
+            starting_date = cal.visible_date
+            starting_time = dt.time(12,0).isoformat()
 
         self.backend = backend
         self.calendar = cal
         self.container = container
         self.event = event
-        self.time = self.insert("Time", em.CheckedEntry(self.frame, em.CheckForException("Unknown Time", dt.time.fromisoformat), event.scheduled_at.timetz().isoformat()))
-        self.date = self.insert("Date", em.DateEntry(self.frame, event.scheduled_at.date()))
+        self.date = self.insert("Date", em.DateEntry(self.frame, starting_date))
+        self.time = self.insert("Time", em.CheckedEntry(self.frame, em.CheckForException("Unknown Time", dt.time.fromisoformat), starting_time))
         self.meal = self.insert_searcher(
             "Meal",
             em.ClosedDbSearchOptions(
@@ -329,7 +418,7 @@ class EditEvent(em.EditMenuWithSearcher):
         match self.event:
             case ExistingEvent() as e:
                 self.backend.event.update_event(e.modify(meal_id=new_meal.id, meal_name=new_meal.name, scheduled_at=new_dt))
-            case Event() as e:
+            case None:
                 self.backend.event.create_event(Event(new_meal.id, new_dt))
 
         self.calendar.refresh_calendar()
