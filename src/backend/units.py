@@ -28,16 +28,18 @@ def get_units(unit_name: str) -> pint.Unit:
         return unit_reg.dimensionless
         # units.define(f"{unit_name} = ")
 
-@dataclass
+@dataclass(frozen=True)
 class MeasureType:
     id: int
     name: str
     
     # Note: this field gets computed by __post_init__. You don't need to pass in a value for it.
-    pint_unit: pint.Unit = field(init=False)
+    pint_unit: pint.Unit = field(init=False, compare=False)
 
     def __post_init__(self):
-        self.pint_unit = getattr(unit_reg, self.name)
+        # have to use this to initialize a value on a frozen object
+        object.__setattr__(self, "pint_unit", getattr(unit_reg, self.name))
+
         existing.type_check_self(self)
 
 

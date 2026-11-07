@@ -16,12 +16,14 @@ from . import (
     ingredients_list as il,
     meal_catalog as mc,
     calendar as cal,
+    shopping_list_generator as sl,
 )
 from ..backend import (
     ingredient_list as il_backend,
     virtual_pantry as vp_backend,
     meal_catalog as mc_backend,
     event as ev_backend,
+    shopping_list_generator as sl_backend,
 )
 
 
@@ -43,6 +45,7 @@ class Backend:
     pantry: vp_backend.VirtualPantry
     meals: mc_backend.MealCatalog
     event: ev_backend.EventManager
+    generator: sl_backend.ShoppingListGenerator
 
 class Application:
     """The class that runs the application and handles any setup for the backend and database."""
@@ -54,11 +57,13 @@ class Application:
         self.root = tk.Tk()
         self.root.wm_title("Meal Planner")
         self.root.geometry("750x600")
+        pantry = vp_backend.VirtualPantry()
         self.backend = Backend(
             il_backend.IngredientList(),
-            vp_backend.VirtualPantry(),
+            pantry,
             mc_backend.MealCatalog(),
             ev_backend.EventManager(),
+            sl_backend.ShoppingListGenerator(pantry),
         )
         self.interface = UserInterface(self.root, self.backend)
 
@@ -69,7 +74,7 @@ class UserInterface:
     pantry: vp.VirtualPantry
     meals: mc.MealCatalog
     calendar: cal.Calendar
-    shopping_list: DummyInterface
+    shopping_list: sl.ShoppingListGeneratorUI
     ingredients: il.IngredientsList
     settings: DummyInterface
 
@@ -81,7 +86,7 @@ class UserInterface:
         self.pantry = vp.VirtualPantry(top_bar_menu, backend)
         self.meals = mc.MealCatalog(top_bar_menu, backend)
         self.calendar = cal.Calendar(top_bar_menu, backend)
-        self.shopping_list = DummyInterface("Your Shopping List", ttk.Frame(top_bar_menu, name="shopping"))
+        self.shopping_list = sl.ShoppingListGeneratorUI(top_bar_menu, backend)
         self.ingredients = il.IngredientsList(top_bar_menu, self.pantry, backend.ingredients)
         self.settings = DummyInterface("Settings", ttk.Frame(top_bar_menu, name="settings"))
 
