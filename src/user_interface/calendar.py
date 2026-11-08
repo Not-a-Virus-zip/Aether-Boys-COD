@@ -257,19 +257,21 @@ class EventDisplay:
     _full_text: str = field(init=False)
     _display_text: str = field(init=False)
     _font: font.Font = field(init=False)
-    _bind_id: str = field(init=False)
+    _bind_ids: list[tuple[str, str]] = field(init=False)
     _selected: bool = field(init=False, default=False)
     _previous_width: int = field(init=False, default=-1)
 
     parent: InitVar[tk.Misc]
 
     def __post_init__(self, parent: tk.Misc):
-        self.button = ttk.Button(parent, text=self.event.meal_name, width=0, style="EventDisplay.TButton")
-        self.button.config(command=self._on_click)
+        self.button = ttk.Button(parent, text=self.event.meal_name, width=0, style="EventDisplay.TButton", command=self._on_click)
         self._full_text = self.button["text"]
         self._display_text = self._full_text[:EVENT_NAME_MAX_DISPLAY_LEN_ON_CALENDAR]
         self._font = font.Font(font=ttk.Style().lookup(self.button["style"], "font"))
-        self._bind_id = self.button.bind("<Configure>", self._on_resize)
+        self._bind_ids = [
+            ("<Configure>", self.button.bind("<Configure>", self._on_resize)),
+            ("<Double-Button-1>", self.button.bind("<Double-Button-1>", self._on_double_click)),
+        ]
 
     def _on_resize(self, event: tk.Event):
         new_width = event.width
@@ -279,6 +281,12 @@ class EventDisplay:
         available_width = max(new_width - 8, 0)
         truncated_text = truncate_text_to_fit_button(self._font, self._display_text, available_width)
         self.button.config(text=truncated_text)
+
+    def _on_double_click(self, event: tk.Event):
+        prev_state = self._selected
+        self.set_selected(True)
+        self.cal.press_add_button()
+        self.set_selected(prev_state)
 
     def set_selected(self, new_state: bool):
         if new_state != self._selected:
@@ -291,6 +299,8 @@ class EventDisplay:
 
     def destroy(self):
         self.alive = False
+        for event_sequence, binding in self._bind_ids:
+            self.button.unbind(event_sequence, binding)
         self.button.destroy()
 
 AVG_MONTH_LEN = 365.25 / 12
