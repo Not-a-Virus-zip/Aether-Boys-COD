@@ -21,16 +21,6 @@ from ..backend.event import Event, ExistingEvent
 YEAR_SELECT_RANGE = 50
 EVENT_NAME_MAX_DISPLAY_LEN_ON_CALENDAR = 50
 
-def add_calendar_styles(parent: tk.Misc):
-    style = ttk.Style(parent)
-    style.map("CalendarFrame.TFrame",
-        # Note: our typechecker gives style.map the wrong return type
-        background=[("disabled", "light gray"), *style.map("TFrame", "background")], # pyright: ignore[reportArgumentType]
-    )
-    style.map("EventDisplay.TButton",
-        anchor=[("w",)],
-    )
-
 class Calendar:
     name = "Calendar"
 
@@ -88,9 +78,9 @@ class Calendar:
             frame.columnconfigure(1, weight=1)
             frame.rowconfigure(1, weight=1)
             frame.grid(row=row, column=column, sticky="news")
-            num_lbl = ttk.Label(frame, anchor="nw")
+            num_lbl = ttk.Label(frame, anchor="nw", style="CalendarDayLabel.TLabel")
             num_lbl.grid(row=0, column=0)
-            event_panel = ttk.Frame(frame, padding=2)
+            event_panel = ttk.Frame(frame, padding=2, style="CalendarEventFrame.TFrame")
             event_panel.grid(row=1, column=0, columnspan=2, sticky="nsew")
             event_panel.columnconfigure(0, weight=1)
             return CalendarPanel(frame, num_lbl, event_panel, [])
@@ -100,6 +90,9 @@ class Calendar:
             for row in range(6)
             for column in range(7)
         ]
+
+        # dummy value to simplify code
+        self.current_today_panel = self.day_frames[0]
 
         button_frame, (
             self.delete_button,
@@ -237,6 +230,13 @@ class Calendar:
             event_disp = EventDisplay(event, self.backend, self, tgt_panel.event_frame)
             event_disp.button.grid(row=len(tgt_panel.events), column=0, sticky="ew")
             tgt_panel.events.append(event_disp)
+        
+        self.current_today_panel.set_state(today=False)
+        today = dt.date.today()
+        if today.year == year and today.month == month:
+            self.current_today_panel = days[today.day-1]
+            self.current_today_panel.set_state(today=True)
+            
 
 @dataclass
 class CalendarPanel:
@@ -244,6 +244,14 @@ class CalendarPanel:
     number_label: ttk.Label
     event_frame: ttk.Frame
     events: list[EventDisplay]
+
+    def set_state(self, **kwargs: bool):
+        statespec = tuple(it.starmap(custom_state, kwargs.items()))
+        self.frame.state(statespec)
+        self.number_label.state(statespec)
+        self.event_frame.state(statespec)
+        for event in self.events:
+            event.button.state(statespec)
 
 @dataclass
 class EventDisplay:
@@ -338,6 +346,45 @@ def truncate_text_to_fit_button(font: font.Font, base_text: str, available_width
         if curr > available_width:
             return base_text[:i-1] + "-"
     return base_text
+
+# used for styling
+custom_state_dictionary = {
+    "today": "user1" # state when a calendar frame is today's date
+}
+
+def custom_state(st: str, active: bool = True):
+    try:
+        if active:
+            return custom_state_dictionary[st]
+        else:
+            return f"!{custom_state_dictionary[st]}"
+    except KeyError as e:
+        e.add_note("Invalid state name: {st!r}")
+        raise
+
+def add_calendar_styles(parent: tk.Misc):
+    style = ttk.Style(parent)
+    s = custom_state
+    style.map("CalendarFrame.TFrame",
+        # Note: our typechecker gives style.map the wrong return type
+        background=[("disabled", "light gray"), (s("today"), "light blue"), *style.map("TFrame", "background")], # pyright: ignore[reportArgumentType]
+    )
+    style.map("CalendarEventFrame.TFrame",
+        # Note: our typechecker gives style.map the wrong return type
+        background=[(s("today"), "light blue"), *style.map("TFrame", "background")], # pyright: ignore[reportArgumentType]
+    )
+    style.map("CalendarDayLabel.TLabel",
+        # Note: our typechecker gives style.map the wrong return type
+        background=[(s("today"), "light blue"), *style.map("TLabel", "background")], # pyright: ignore[reportArgumentType]
+    )
+    
+    style.configure("EventDisplay.TButton",
+        anchor="w",
+    )
+    style.map("EventDisplay.TButton",
+        background=[(s("today"), "light blue"), *style.map("TButton", "background")], # pyright: ignore[reportArgumentType]
+    )
+
 
 MONTHS_MAP = {fmt_month_int(month): month for month in calendar.Month}
 
