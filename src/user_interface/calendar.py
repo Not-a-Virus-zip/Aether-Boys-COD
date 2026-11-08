@@ -21,34 +21,6 @@ from ..backend.event import Event, ExistingEvent
 YEAR_SELECT_RANGE = 50
 EVENT_NAME_MAX_DISPLAY_LEN_ON_CALENDAR = 50
 
-mk_indent = lambda n: " " * n * 4
-
-def do_list(l, indent, wrapper):
-    inner_indent = mk_indent(indent+1)
-    s = wrapper[0]
-    for thing in l:
-        s += f"\n{inner_indent}{prettiffy(thing, indent+1)},"
-    s += "\n" + mk_indent(indent) + wrapper[1]
-    return s
-
-def prettiffy(n, indent=0) -> str:
-    match n:
-        case list() as l:
-            return do_list(l, indent, "[]")
-        case tuple() as t:
-            return do_list(t, indent, "()")
-        case dict() as d:
-            indent_prefix = mk_indent(indent+1)
-            s = "{"
-            for name, thing in d.items():
-                s += f"\n{indent_prefix}{name}: {prettiffy(thing, indent+1)},"
-            s += "\n" + mk_indent(indent) + "}"
-            return s
-        # case other:
-        #     raise TypeError(f"Encountered {type(other).__name__}")
-        case other:
-            return str(other)
-
 def add_calendar_styles(parent: tk.Misc):
     style = ttk.Style(parent)
     style.map("CalendarFrame.TFrame",
@@ -109,6 +81,10 @@ class Calendar:
         
         def make_frame(column, row):
             frame = ttk.Frame(cal_frame, relief=tk.GROOVE, padding=2, style="CalendarFrame.TFrame")
+
+            # Fixes a visual bug where the panels shift slightly whenever the text on buttons updates 
+            frame.grid_propagate(False)
+
             frame.columnconfigure(1, weight=1)
             frame.rowconfigure(1, weight=1)
             frame.grid(row=row, column=column, sticky="news")
@@ -239,13 +215,13 @@ class Calendar:
             if day_n == 0:
                 panel.frame.state(("disabled",))
                 panel.number_label.grid_remove()
-                panel.event_display.grid_remove()
+                panel.event_frame.grid_remove()
             else:
                 panel.frame.state(("!disabled",))
                 days.append(panel)
                 panel.number_label.config(text=str(day_n))
                 panel.number_label.grid()
-                panel.event_display.grid()
+                panel.event_frame.grid()
                 for ev in panel.events:
                     ev.destroy()
                 panel.events.clear()
@@ -258,7 +234,7 @@ class Calendar:
                 # bad db info?
                 print(f"IndexError: {e}") # TODO: Logging
                 continue
-            event_disp = EventDisplay(event, self.backend, self, tgt_panel.event_display)
+            event_disp = EventDisplay(event, self.backend, self, tgt_panel.event_frame)
             event_disp.button.grid(row=len(tgt_panel.events), column=0, sticky="ew")
             tgt_panel.events.append(event_disp)
 
@@ -266,7 +242,7 @@ class Calendar:
 class CalendarPanel:
     frame: ttk.Frame
     number_label: ttk.Label
-    event_display: ttk.Frame
+    event_frame: ttk.Frame
     events: list[EventDisplay]
 
 @dataclass
@@ -300,18 +276,9 @@ class EventDisplay:
         if new_width == self._previous_width:
             return
         self._previous_width = new_width
-        bounds = max(new_width - 8, 0)
-
-        if self._font.measure(self._display_text) < bounds:
-            self.button.config(text=self._display_text)
-            return
-        partial = self._display_text[:-2]
-
-        while partial and self._font.measure(f"{partial}-") >= bounds:
-            partial = partial[:-1]
-
-        partial = f"{partial}-"
-        self.button.config(text=partial)
+        available_width = max(new_width - 8, 0)
+        truncated_text = truncate_text_to_fit_button(self._font, self._display_text, available_width)
+        self.button.config(text=truncated_text)
 
     def set_selected(self, new_state: bool):
         if new_state != self._selected:
@@ -324,7 +291,6 @@ class EventDisplay:
 
     def destroy(self):
         self.alive = False
-        self.button.unbind("<Configure>", self._bind_id)
         self.button.destroy()
 
 AVG_MONTH_LEN = 365.25 / 12
@@ -344,6 +310,25 @@ def month_span(date: dt.date) -> tuple[dt.date, dt.date]:
 def fmt_month_int(month_int: calendar.Month | int) -> str:
     return calendar.Month(month_int).name.capitalize()
 
+def truncate_text_to_fit_button(font: font.Font, base_text: str, available_width: int) -> str:
+    if available_width < 1 or available_width < font.measure(base_text[0]):
+        return ""
+
+    total_width_required = font.measure(base_text)
+    
+    if total_width_required <= available_width:
+        return base_text
+
+    # make room for the dash
+    available_width -= font.measure("-")
+
+    curr = 0
+    for i, c in enumerate(base_text):
+        curr += font.measure(c)
+        if curr > available_width:
+            return base_text[:i-1] + "-"
+    return base_text
+
 MONTHS_MAP = {fmt_month_int(month): month for month in calendar.Month}
 
 class DayOfTheWeek(enum.Enum):
@@ -357,7 +342,6 @@ class DayOfTheWeek(enum.Enum):
 
 class RepeatOptions(enum.Enum):
     UntilStopDate = "Until stopping date"
-
 
 class EditEvent(em.EditMenuWithSearcher):
     def __init__(self, container: tk.Misc, cal: Calendar, backend: ui.Backend, event: ExistingEvent | None = None) -> None:
