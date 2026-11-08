@@ -9,17 +9,8 @@ def link_treeview_to_scrollbar(tv: ttk.Treeview, sb: ttk.Scrollbar):
     tv.config(yscrollcommand=sb.set)
     sb.config(command=tv.yview)
 
-def add_double_click_command(treeview: ttk.Treeview, tag: str, command: Callable[[str], None]):
-    def action(e: tk.Event):
-        row = treeview.identify_row(e.y)
-        command(row)
-        print(f"{e = }")
-        print(f"{treeview.focus() = }")
-    bind_str = treeview.tag_bind(tag, "<Double-Button-1>", action)
-    def cleanup(e: tk.Event):
-        treeview.unbind("<Double-Button-1>", bind_str)
-        treeview.unbind("<Destroy>", cleanup_bind_str)
-    cleanup_bind_str = treeview.bind("<Destroy>", cleanup, add=True)
+def add_double_click_command(treeview: ttk.Treeview, tag: str, command: Callable[[str], None]) -> str:
+    return treeview.tag_bind(tag, "<Double-Button-1>", lambda e: command(treeview.identify_row(e.y)))
 
 class ScrollableTreeview:
     """Bundles a `ttk.Treeview` and a `ttk.Scrollbar` together along with a frame containing them both."""
@@ -40,8 +31,8 @@ class ScrollableTreeview:
         # FYI this is a method
         self.grid = self.frame.grid
 
-    def add_double_click_command(self, tag: str, command: Callable[[str], None]):
-        add_double_click_command(self.treeview, tag, command)
+    def add_double_click_command(self, tag: str, command: Callable[[str], None]) -> str:
+        return add_double_click_command(self.treeview, tag, command)
 
     if typing.TYPE_CHECKING: # typing.TYPE_CHECKING is False but the editor/typechecker acts like it's True
         # I made this so my editor will remind me what the parameters of ScrollableTreeview are.

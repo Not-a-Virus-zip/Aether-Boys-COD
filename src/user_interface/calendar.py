@@ -27,6 +27,9 @@ class Calendar:
     def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
         add_calendar_styles(parent)
         self._selected_event: EventDisplay | None = None
+        self._selected_panel: CalendarPanel | None = None
+        self._selected_date: dt.date | None = None
+
         self.backend = backend
         self.cal = calendar.Calendar(firstweekday=calendar.SUNDAY)
 
@@ -70,7 +73,7 @@ class Calendar:
             label.grid(row=0, column=i, sticky="ew")
         
         def make_frame(column, row):
-            frame = ttk.Frame(cal_frame, relief=tk.GROOVE, padding=2, style="CalendarFrame.TFrame")
+            frame = ttk.Frame(cal_frame, name=f"calendar_panel_{column}x{row}", relief=tk.GROOVE, padding=2, style="CalendarPanel.TFrame")
 
             # Fixes a visual bug where the panels shift slightly whenever the text on buttons updates 
             frame.grid_propagate(False)
@@ -83,7 +86,7 @@ class Calendar:
             event_panel = ttk.Frame(frame, padding=2, style="CalendarEventFrame.TFrame")
             event_panel.grid(row=1, column=0, columnspan=2, sticky="nsew")
             event_panel.columnconfigure(0, weight=1)
-            return CalendarPanel(frame, num_lbl, event_panel, [])
+            return CalendarPanel(self, frame, num_lbl, event_panel, [], 0)
         
         self.day_frames = [
             make_frame(column, row+1)
@@ -154,6 +157,23 @@ class Calendar:
         self.edit_button.state(new_state)
         self.delete_button.state(new_state)
 
+    def set_selected_panel(self, new_selection: CalendarPanel | None):
+        if self._selected_panel is not None:
+            self._selected_panel.set_state(selected=False)
+        if new_selection is None:
+            self._selected_panel = None
+            self._selected_date = None
+        else:
+            new_selection.set_state(selected=True)
+            self._selected_panel = new_selection
+            self._selected_date = self.visible_date.replace(day=new_selection.current_day)
+
+    def is_panel_selected(self, panel: CalendarPanel) -> bool:
+        return panel is self._selected_panel
+
+    def get_date_for_new_event(self):
+        return self.visible_date if self._selected_date is None else self._selected_date
+
     def _on_year_selected(self, event: tk.Event):
         selection = self.month_box.get()
         try:
@@ -205,6 +225,7 @@ class Calendar:
             # after we finish with the days in the current month, we still need to clear the remaining frames
             it.chain(self.cal.itermonthdays(year, month), it.repeat(0))
         ):
+            panel.current_day = day_n
             if day_n == 0:
                 panel.frame.state(("disabled",))
                 panel.number_label.grid_remove()
@@ -236,14 +257,33 @@ class Calendar:
         if today.year == year and today.month == month:
             self.current_today_panel = days[today.day-1]
             self.current_today_panel.set_state(today=True)
-            
 
 @dataclass
 class CalendarPanel:
+    cal: Calendar
     frame: ttk.Frame
     number_label: ttk.Label
     event_frame: ttk.Frame
     events: list[EventDisplay]
+    current_day: int
+
+    def __post_init__(self):
+        for w in self.frame, self.number_label, self.event_frame:
+            w.bind("<Button-1>", self._on_click)
+            w.bind("<Double-Button-1>", self._on_double_click)
+
+    def _on_click(self, event: tk.Event):
+        if self.frame.instate(("!disabled",)):
+            self.cal.set_selected_panel(
+                None
+                if self.cal.is_panel_selected(self) else
+                self
+            )
+
+    def _on_double_click(self, event: tk.Event):
+        if self.frame.instate(("!disabled",)):
+            self.cal.set_selected_panel(self)
+            self.cal.press_add_button()
 
     def set_state(self, **kwargs: bool):
         statespec = tuple(it.starmap(custom_state, kwargs.items()))
@@ -265,7 +305,6 @@ class EventDisplay:
     _full_text: str = field(init=False)
     _display_text: str = field(init=False)
     _font: font.Font = field(init=False)
-    _bind_ids: list[tuple[str, str]] = field(init=False)
     _selected: bool = field(init=False, default=False)
     _previous_width: int = field(init=False, default=-1)
 
@@ -276,10 +315,8 @@ class EventDisplay:
         self._full_text = self.button["text"]
         self._display_text = self._full_text[:EVENT_NAME_MAX_DISPLAY_LEN_ON_CALENDAR]
         self._font = font.Font(font=ttk.Style().lookup(self.button["style"], "font"))
-        self._bind_ids = [
-            ("<Configure>", self.button.bind("<Configure>", self._on_resize)),
-            ("<Double-Button-1>", self.button.bind("<Double-Button-1>", self._on_double_click)),
-        ]
+        self.button.bind("<Configure>", self._on_resize)
+        self.button.bind("<Double-Button-1>", self._on_double_click)
 
     def _on_resize(self, event: tk.Event):
         new_width = event.width
@@ -293,7 +330,7 @@ class EventDisplay:
     def _on_double_click(self, event: tk.Event):
         prev_state = self._selected
         self.set_selected(True)
-        self.cal.press_add_button()
+        self.cal.press_edit_button()
         self.set_selected(prev_state)
 
     def set_selected(self, new_state: bool):
@@ -307,8 +344,6 @@ class EventDisplay:
 
     def destroy(self):
         self.alive = False
-        for event_sequence, binding in self._bind_ids:
-            self.button.unbind(event_sequence, binding)
         self.button.destroy()
 
 AVG_MONTH_LEN = 365.25 / 12
@@ -353,36 +388,32 @@ custom_state_dictionary = {
 }
 
 def custom_state(st: str, active: bool = True):
-    try:
-        if active:
-            return custom_state_dictionary[st]
-        else:
-            return f"!{custom_state_dictionary[st]}"
-    except KeyError as e:
-        e.add_note("Invalid state name: {st!r}")
-        raise
+    if active:
+        return custom_state_dictionary.get(st, st)
+    else:
+        return f"!{custom_state_dictionary.get(st, st)}"
 
 def add_calendar_styles(parent: tk.Misc):
     style = ttk.Style(parent)
-    s = custom_state
-    style.map("CalendarFrame.TFrame",
-        # Note: our typechecker gives style.map the wrong return type
-        background=[("disabled", "light gray"), (s("today"), "light blue"), *style.map("TFrame", "background")], # pyright: ignore[reportArgumentType]
+    selected = ("selected", "light blue")
+    today = (custom_state("today"), "light green")
+    selected_and_today = (custom_state("today"), "selected", "cyan")
+    panel_modes = selected_and_today, selected, today
+    style.map("CalendarPanel.TFrame",
+        background=[("disabled", "light gray"), *panel_modes],
     )
     style.map("CalendarEventFrame.TFrame",
-        # Note: our typechecker gives style.map the wrong return type
-        background=[(s("today"), "light blue"), *style.map("TFrame", "background")], # pyright: ignore[reportArgumentType]
+        background=[*panel_modes],
     )
     style.map("CalendarDayLabel.TLabel",
-        # Note: our typechecker gives style.map the wrong return type
-        background=[(s("today"), "light blue"), *style.map("TLabel", "background")], # pyright: ignore[reportArgumentType]
+        background=[*panel_modes],
     )
     
     style.configure("EventDisplay.TButton",
         anchor="w",
     )
     style.map("EventDisplay.TButton",
-        background=[(s("today"), "light blue"), *style.map("TButton", "background")], # pyright: ignore[reportArgumentType]
+        background=[*panel_modes],
     )
 
 
@@ -409,7 +440,7 @@ class EditEvent(em.EditMenuWithSearcher):
             starting_time = event.scheduled_at.timetz().isoformat()
         else:
             initial_meal = None
-            starting_date = cal.visible_date
+            starting_date = cal.get_date_for_new_event()
             starting_time = dt.time(12,0).isoformat()
 
         self.backend = backend

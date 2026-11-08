@@ -64,7 +64,7 @@ class ShoppingListGeneratorUI:
     def _on_duration_modified(self, *_):
         user_input = self.duration_var.get()
         match parse_duration_input(dt.date.today(), user_input):
-            case ValueError() as e:
+            case Exception() as e:
                 self.duration_error_label.config(text=str(e))
             case span:
                 self.update_shopping_preview(span)
@@ -81,7 +81,7 @@ class ShoppingListGeneratorUI:
         for i, (ingr, qty) in enumerate(self.shopping_list.ingredients_needed):
             self.shopping_list_disp.treeview.insert("", "end", id=i, text="", values=[ingr.name, ui.fmt_qty(qty)])
 
-def parse_duration_input(starting_point: dt.date, user_input: str) -> tuple[dt.date, dt.date] | ValueError:
+def parse_duration_input(starting_point: dt.date, user_input: str) -> tuple[dt.date, dt.date] | ValueError | pint.UndefinedUnitError:
     user_input = user_input.strip()
     
     if not user_input:
@@ -90,7 +90,7 @@ def parse_duration_input(starting_point: dt.date, user_input: str) -> tuple[dt.d
     u = units.unit_reg
     try:
         duration = units.interpret_quantity(user_input, u.day)
-    except ValueError as e:
+    except (ValueError, pint.UndefinedUnitError) as e:
         return e
     return starting_point, starting_point + duration.to_timedelta()
 
