@@ -1,8 +1,12 @@
 from __future__ import annotations
+
+import datetime as dt
+
 import pint
 
 from . import (
     ingredient_list as il,
+    shopping_list_generator as sl,
     units,
 )
 from ..database import database_logic as db
@@ -55,3 +59,6 @@ class VirtualPantry:
     def delete_vpantry_entry(self, ingredient_id: int):
         """Deletes an ingredient from the VP, no restrictions"""
         db.VirtualPantryQuery.run_delete(ingredient_id)
+
+    def add_purchased_ingredients(self, ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]):
+        raise NotImplementedError
