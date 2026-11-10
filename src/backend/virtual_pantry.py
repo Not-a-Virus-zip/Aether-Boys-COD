@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import datetime as dt
-
 import pint
 
 from . import (
     ingredient_list as il,
-    shopping_list_generator as sl,
     units,
 )
 from ..database import database_logic as db

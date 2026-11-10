@@ -15,7 +15,7 @@ from ..backend import (
     ingredient_list as il_backend,
     units
 )
-from ..backend.ingredient_list import (Ingredient, ExistingIngredient)
+from ..backend.ingredient_list import ExistingIngredient
 
 
 class VirtualPantry:

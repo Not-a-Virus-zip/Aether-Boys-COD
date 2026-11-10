@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 import dataclasses
-from re import search
 
 import pint
 

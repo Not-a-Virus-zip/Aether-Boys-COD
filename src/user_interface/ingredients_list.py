@@ -13,7 +13,7 @@ from ..backend import (
     ingredient_list as il_backend,
     virtual_pantry as vp_backend,
 )
-from ..backend.ingredient_list import Ingredient, ExistingIngredient
+from ..backend.ingredient_list import ExistingIngredient
 
 class IngredientsList:
     """Constructs and controls the ingredients UI"""

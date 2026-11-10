@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 # Standard Library Imports
-from typing import Any, Callable, Iterable
-from tkinter import messagebox, ttk
+from typing import Callable, Iterable
+from tkinter import ttk
 import tkinter as tk
 from dataclasses import dataclass
 
@@ -11,7 +11,6 @@ import pint
 
 # Meal Planner Imports
 from . import (
-    edit_menu as em,
     virtual_pantry as vp,
     ingredients_list as il,
     meal_catalog as mc,

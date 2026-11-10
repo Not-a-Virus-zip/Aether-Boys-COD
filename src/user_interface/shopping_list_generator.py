@@ -10,7 +10,6 @@ from ..backend import units
 from .treeview_tools import ScrollableTreeview
 from . import (
     user_interface_impl as ui,
-    calendar as cal,
 )
 
 class ShoppingListGeneratorUI:
