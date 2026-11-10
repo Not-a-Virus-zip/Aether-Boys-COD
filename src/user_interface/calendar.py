@@ -134,7 +134,7 @@ class Calendar:
     def press_add_button(self):
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
-            "Edit Event",
+            "Add Event",
             lambda tl: EditEvent(tl, self, self.backend).frame,
         )
 
