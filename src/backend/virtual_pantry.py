@@ -19,7 +19,6 @@ def into_measure_type_id(unit) -> int:
         unit_name = "piece" # TODO: Replace this stuff with better implementation
     results = db.MeasureTypeQuery.run_select(filter_column="name", filter_value=unit_name, exact=True)
     if not results: raise ValueError("no unit found")
-    print(f"{results = }")
     return int(results[0][0])
 
 def into_measure_type(unit) -> units.MeasureType:
@@ -65,11 +64,20 @@ class VirtualPantry:
         measure_ids = dt.load_measure_ids()
         
         # Get current Virtual Pantry
-        {ing_id: pint.Quantity(qty, unit) for ing_id, qty, unit in db.VirtualPantryQuery.run_select_backend()}
+        curr = {ing_id: units.unit_reg.Quantity(qty, unit) for ing_id, qty, unit in db.VirtualPantryQuery.run_select_backend()}
 
         # Make a list of ingredients that need to have quantity updated / Ingredients that need to be added
 
         # Run update
         # Run insert
         
-        raise NotImplementedError
+        self.placeholder_add_purchased_ingredients(curr, ingredients)
+
+
+    def placeholder_add_purchased_ingredients(self, curr, added: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]): 
+        
+        for ingr, qty in added:
+            if ingr.id in curr:
+                self.update_vpantry_entry(ingr, curr[ingr.id] + qty)
+            else:
+                self.add_vpantry_entry(ingr, qty)

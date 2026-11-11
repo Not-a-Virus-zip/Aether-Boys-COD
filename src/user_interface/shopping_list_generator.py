@@ -19,6 +19,7 @@ from ..backend import (
 from .treeview_tools import AutoSorter, ScrollableTreeview, add_double_click_command
 from . import (
     user_interface_impl as ui,
+    virtual_pantry as vp,
 )
 
 type UIMode = CreateNewListUI | ShowCurrentListUI
@@ -26,11 +27,13 @@ type UIMode = CreateNewListUI | ShowCurrentListUI
 class ShoppingListGeneratorUI:
     name: str = "Your Shopping List"
 
-    def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
+    def __init__(self, parent: ttk.Notebook, pantry: vp.VirtualPantry, backend: ui.Backend) -> None:
         self.frame = ttk.Frame(parent, name="shopping", padding=20)
         self.frame.columnconfigure(0, weight=1)
         self.frame.rowconfigure(0, weight=1)
         self.backend = backend
+
+        self.pantry = pantry
 
         self.generator = CreateNewListUI(self.frame, self)
         self.trip_display = ShowCurrentListUI(self.frame, self)
@@ -56,6 +59,7 @@ class ShoppingListGeneratorUI:
 
     def finish_shopping_trip(self, trip: ShoppingTripResults):
         self.backend.generator.complete_shopping_trip(trip)
+        self.pantry.refresh_pantry()
         self._swap_in_ui(self.generator)
 
 class CreateNewListUI:
