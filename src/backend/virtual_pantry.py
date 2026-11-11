@@ -5,8 +5,12 @@ import pint
 from . import (
     ingredient_list as il,
     units,
+    backend_tools as bt,
 )
-from ..database import database_logic as db
+from ..database import (
+    database_logic as db,
+    database_tools as dt,
+)
 
 
 def into_measure_type_id(unit) -> int:
@@ -58,4 +62,14 @@ class VirtualPantry:
         db.VirtualPantryQuery.run_delete(ingredient_id)
 
     def add_purchased_ingredients(self, ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]):
+        measure_ids = dt.load_measure_ids()
+        
+        # Get current Virtual Pantry
+        {ing_id: pint.Quantity(qty, unit) for ing_id, qty, unit in db.VirtualPantryQuery.run_select_backend()}
+
+        # Make a list of ingredients that need to have quantity updated / Ingredients that need to be added
+
+        # Run update
+        # Run insert
+        
         raise NotImplementedError
