@@ -111,6 +111,20 @@ class VirtualPantryQuery(SelectDB):
         except sql.IntegrityError as e:
             print(f'{e}: There was an invalid ID given for measure {measure_id!r}. Please check!')
 
+    # Grabs only info needed for backend. No user facing values
+    @staticmethod
+    def run_select_backend() -> list[tuple]:
+        with get_connection() as con:
+            cur = con.cursor()
+            return cur.execute(
+            """
+            SELECT vp.ingredientID, vp.qtyHave, mt.name
+            FROM VirtualPantry as vp
+            JOIN MeasureType as mt
+                ON vp.measureID = mt.measureID
+            """).fetchall()
+
+
 
 class MeasureTypeQuery(SelectDB):
 
