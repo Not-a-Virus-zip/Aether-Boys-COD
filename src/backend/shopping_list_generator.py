@@ -6,7 +6,7 @@ from . import (
     virtual_pantry as vp,
     units as u,
 )
-from src.database.database_logic import (
+from ..database.database_logic import (
     ShoppingListQuery as shop_query,
 )
 import pint
@@ -29,18 +29,24 @@ class ShoppingTripResults:
 class ShoppingListGenerator:
     def __init__(self, virtual_pantry: vp.VirtualPantry) -> None:
         self.virtual_pantry = virtual_pantry
+        self.current_trip = None
+        self.i = 0
 
     def get_current_shopping_trip(self) -> CurrentShoppingTrip | None:
         """If there is an active shopping trip, return it, otherwise return None"""
-        raise NotImplementedError
+        return self.current_trip
 
     def cancel_shopping_trip(self, trip: CurrentShoppingTrip):
         """Cancel the given shopping trip. `trip` should be the current shopping trip"""
-        raise NotImplementedError
+        if self.current_trip is None or self.current_trip.id != trip.id:
+            raise Exception("trip != current trip")
 
     def start_shopping_trip(self, shopping_list: ShoppingList) -> CurrentShoppingTrip:
         """Set `shopping_list` as the current shopping list. (raise error if one already exists)"""
-        raise NotImplementedError
+        assert self.current_trip is None
+        self.current_trip = CurrentShoppingTrip(shopping_list.ingredients_needed, shopping_list.date_range, self.i)
+        self.i += 1
+        return self.current_trip
 
     def complete_shopping_trip(self, shopping_list: ShoppingTripResults):
         """Deposit the items purchased on a shopping trip into the virtual pantry and clear the current shopping list"""
@@ -48,7 +54,7 @@ class ShoppingListGenerator:
         self.virtual_pantry.add_purchased_ingredients(shopping_list.ingredients_actually_purchased)
 
         # clear the current shopping trip
-        raise NotImplementedError
+        self.current_trip = None
 
     def get_needed_ingredients(self, start_date: date, end_date: date) -> ShoppingList:
         """Gets a list of ingredients in range of dates"""
