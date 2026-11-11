@@ -12,10 +12,18 @@ def interpret_quantity(quantity_expression: str, unit_constraint: pint.Unit | No
         quantity = unit_reg.parse_expression(quantity_expression)
         if unit_constraint is None:
             return quantity
-        if quantity.unitless:
-            quantity *= unit_constraint
-        if not quantity.is_compatible_with(unit_constraint):
-            raise ValueError(f"Incompatible units: {quantity.units} and {unit_constraint}")
+        base_unit = quantity.units
+        compatible = quantity.is_compatible_with(unit_constraint)
+        if not compatible and quantity.unitless:
+            # try to multiply by the unit constraint
+            try:
+                quantity *= unit_constraint
+            except pint.PintError:
+                pass
+            # did we make it compatible?
+            compatible = quantity.is_compatible_with(unit_constraint)
+        if not compatible:
+            raise ValueError(f"Incompatible units: {base_unit} and {unit_constraint}")
         return quantity
     else:
         raise ValueError("expected quantity expression, found empty string")
