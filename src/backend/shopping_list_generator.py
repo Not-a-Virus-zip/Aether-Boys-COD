@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import date
 
+import pint
+
 from . import (
     ingredient_list as il,
     virtual_pantry as vp,
@@ -9,7 +11,8 @@ from . import (
 from ..database.database_logic import (
     ShoppingListQuery as shop_query,
 )
-import pint
+from ..user_interface import user_interface_impl as ui
+from ..update_flags import DataUpdate
 
 @dataclass(frozen=True)
 class ShoppingList:
@@ -27,7 +30,8 @@ class ShoppingTripResults:
     ingredients_actually_purchased: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]
 
 class ShoppingListGenerator:
-    def __init__(self, virtual_pantry: vp.VirtualPantry) -> None:
+    def __init__(self, app: ui.Application, virtual_pantry: vp.VirtualPantry) -> None:
+        self.app = app
         self.virtual_pantry = virtual_pantry
         self.current_trip = None
         self.i = 0
@@ -55,6 +59,7 @@ class ShoppingListGenerator:
 
         # clear the current shopping trip
         self.current_trip = None
+
 
     def get_needed_ingredients(self, start_date: date, end_date: date) -> ShoppingList:
         """Gets a list of ingredients in range of dates"""

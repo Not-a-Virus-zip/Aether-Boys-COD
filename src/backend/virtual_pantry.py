@@ -11,6 +11,8 @@ from ..database import (
     database_logic as db,
     database_tools as dt,
 )
+from ..user_interface import user_interface_impl as ui
+from ..update_flags import DataUpdate
 
 
 def into_measure_type_id(unit) -> int:
@@ -36,16 +38,21 @@ class VirtualPantry:
     # current_contents: dict[il.ExistingIngredient, pint.Quantity]
     # You can add parameters to the constructor if needed
     # (like if it needs to be passed some sort of DatabaseController class or anything else)
-    def __init__(self) -> None:
-        pass
+    def __init__(self, app: ui.Application) -> None:
+        self.app = app
+
+    def broadcast_changes_to_ui(self):
+        self.app.handle_update(DataUpdate.VirtualPantry)
 
     def update_vpantry_entry(self, updated_ingr: il.ExistingIngredient, new_quant: pint.Quantity):
         """Update the ingredient quantity stored in the virtual pantry, replacing the previous quantity (if one existed)"""
         db.VirtualPantryQuery.run_update(updated_ingr.id, new_quant.magnitude, str(into_measure_type_id(new_quant.units)))
+        self.broadcast_changes_to_ui()
 
     def add_vpantry_entry(self, updated_ingr: il.ExistingIngredient, new_quant: pint.Quantity):
         """Update the ingredient quantity stored in the virtual pantry, replacing the previous quantity (if one existed)"""
         db.VirtualPantryQuery.run_insert(updated_ingr.id, new_quant.magnitude, str(into_measure_type_id(new_quant.units)))
+        self.broadcast_changes_to_ui()
 
     def load_virtual_pantry_contents(self) -> list[tuple[il.ExistingIngredient, pint.Quantity]]:
         """Get the current contents of the virtual pantry"""
@@ -59,6 +66,7 @@ class VirtualPantry:
     def delete_vpantry_entry(self, ingredient_id: int):
         """Deletes an ingredient from the VP, no restrictions"""
         db.VirtualPantryQuery.run_delete(ingredient_id)
+        self.broadcast_changes_to_ui()
 
     def add_purchased_ingredients(self, ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]):
         measure_ids = dt.load_measure_ids()
@@ -72,6 +80,8 @@ class VirtualPantry:
         # Run insert
         
         self.placeholder_add_purchased_ingredients(curr, ingredients)
+
+        self.broadcast_changes_to_ui()
 
 
     def placeholder_add_purchased_ingredients(self, curr, added: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]): 

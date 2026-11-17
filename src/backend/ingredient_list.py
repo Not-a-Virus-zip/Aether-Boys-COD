@@ -10,6 +10,8 @@ from ..errors import (
     QueryDeleteError,
     IngredientInUseError,
 )
+from ..user_interface import user_interface_impl as ui
+from ..update_flags import DataUpdate
 from .units import MeasureType
 from . import (
     existing,
@@ -51,20 +53,23 @@ def ingredient_from_db_tuple(db_tuple: tuple[int, str, str | None, int, str]) ->
 class IngredientList:
     # You can add arguments to the constructor if needed
     # (like if it needs to be passed some sort of DatabaseController class or anything else)
-    def __init__(self) -> None:
-        pass
+    def __init__(self, app: ui.Application) -> None:
+        self.app = app
+
+    def broadcast_changes_to_ui(self):
+        self.app.handle_update(DataUpdate.VirtualPantry)
 
     # API used by the UI code for the ingredient list screen
-
-    # TODO: Replace "raise NotImplementedError" with actual implementation
 
     def update_ingredient(self, modified: ExistingIngredient):
         """Store a modified version of an ingredient, replacing the previous version"""
         iq.run_update(modified.id, modified.name, bt.renull(modified.tag), modified.measurement_type.id)
+        self.broadcast_changes_to_ui()
 
     def create_ingredient(self, name: str, tag: str, measure_type: int):
         """Create a new ingredient"""
         iq.run_insert(name, bt.renull(tag), measure_type)
+        self.broadcast_changes_to_ui()
 
     # Pulls up a list of available MeasurementTypes(?)
     def search_ingredient_units(self, query: str) -> list[str]:  #TODO: list[pint.Unit] 
@@ -88,6 +93,7 @@ class IngredientList:
     def delete_ingredient(self, ingredient_id: int):
         """Remove an ingredient from the database, restricted by Meal"""
         try:
-            iq.run_delete(ingredient_id)   
+            iq.run_delete(ingredient_id)
         except QueryDeleteError as e:
             raise IngredientInUseError from e  # This error gets raised if the ingredient is part of a meal. If it is in virtual pantry it will get silently deleted. Make sure to give warnings.
+        self.broadcast_changes_to_ui()

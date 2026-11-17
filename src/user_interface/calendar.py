@@ -17,12 +17,14 @@ from . import (
 )
 from ..backend.meal_catalog import ExistingSimpleMeal
 from ..backend.event import Event, ExistingEvent
+from ..update_flags import DataUpdate
 
 YEAR_SELECT_RANGE = 50
 EVENT_NAME_MAX_DISPLAY_LEN_ON_CALENDAR = 50
 
 class Calendar:
     name = "Calendar"
+    receive_updates_for = DataUpdate.Calendar | DataUpdate.MealCatalog
 
     def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
         add_calendar_styles(parent)
@@ -129,7 +131,6 @@ class Calendar:
             parent=self.frame,
         ):
             self.backend.event.delete_event(event.event)
-            self.refresh_calendar()
 
     def press_add_button(self):
         em.show_edit_menu(
@@ -200,7 +201,7 @@ class Calendar:
         self.year_box.config(values=list(map(str, range(new_year - YEAR_SELECT_RANGE, new_year + YEAR_SELECT_RANGE))))
         self.year_box.current(YEAR_SELECT_RANGE)
 
-    def refresh_calendar(self):
+    def handle_update(self, update: DataUpdate):
         self.switch_calendar_to(self.visible_date)
 
     def switch_calendar_to(self, new_date: dt.date):
@@ -492,7 +493,5 @@ class EditEvent(em.EditMenuWithSearcher):
                 self.backend.event.update_event(e.modify(meal_id=new_meal.id, meal_name=new_meal.name, scheduled_at=new_dt))
             case None:
                 self.backend.event.create_event(Event(new_meal.id, new_dt))
-
-        self.calendar.refresh_calendar()
         self.container.destroy()
     

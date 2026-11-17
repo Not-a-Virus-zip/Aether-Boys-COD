@@ -1,7 +1,13 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 import dataclasses
-
+from datetime import (
+    datetime,
+    date,
+    time,
+    timedelta,
+)
 
 from . import (
     ingredient_list as il,
@@ -15,13 +21,9 @@ from ..database import (
     database_logic as db,
     database_tools as dt,
 )
+from ..user_interface import user_interface_impl as ui
+from ..update_flags import DataUpdate
 
-from datetime import (
-    datetime,
-    date,
-    time,
-    timedelta,
-)
 
 @dataclass(frozen=True)
 class Event:
@@ -40,7 +42,13 @@ class ExistingEvent(Event):
     modify = existing.modify
 
 
-class EventManager():
+class EventManager:
+    def __init__(self, app: ui.Application) -> None:
+        self.app = app
+
+    def broadcast_changes_to_ui(self):
+        self.app.handle_update(DataUpdate.Calendar)
+    
     def get_simple_event(self,
                          start_date: date,
                          end_date: date
@@ -56,10 +64,13 @@ class EventManager():
     def create_event(self, event: Event)-> None:
         db.EventQuery.run_insert(event.scheduled_at.date().isoformat(), 
                                  event.scheduled_at.time().isoformat(timespec='minutes'), event.meal_id)
+        self.broadcast_changes_to_ui()
 
     def delete_event(self, event: ExistingEvent)-> None:
         db.EventQuery.run_delete(event.event_id)
+        self.broadcast_changes_to_ui()
 
     def update_event(self, event: ExistingEvent)-> None:
         db.EventQuery.run_update(event.event_id, event.scheduled_at.date().isoformat(), 
                                  event.scheduled_at.time().isoformat(timespec='minutes'), event.meal_id)
+        self.broadcast_changes_to_ui()

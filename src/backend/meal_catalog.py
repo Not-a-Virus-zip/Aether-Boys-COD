@@ -15,6 +15,8 @@ from ..database import (
     database_logic as db,
     database_tools as dt,
 )
+from ..user_interface import user_interface_impl as ui
+from ..update_flags import DataUpdate
 
 
 # Currently only used as a base class for DetailedMeal and ExistingDetailedMeal
@@ -62,6 +64,12 @@ def unit_test_typechecking():
 
 
 class MealCatalog:
+    def __init__(self, app: ui.Application) -> None:
+        self.app = app
+
+    def broadcast_changes_to_ui(self):
+        self.app.handle_update(DataUpdate.MealCatalog)
+    
     def get_simple_meals(self, sort_column: str = "name", asc: bool = True, search_term: str = "") -> list[ExistingSimpleMeal]:
         filter_value = search_term or None # if search_term is blank, filter value is None
         filter_column = filter_value and "name" # if filter value is not None, filter column is name
@@ -104,6 +112,7 @@ class MealCatalog:
         db.DetailedMealQuery.run_update(modified.id, modified.name, bt.renull(modified.tag), bt.renull(modified.picture), 
                                         bt.renull(modified.description), bt.renull(modified.recipe))
         db.MealIngredientsQuery.run_update(modified.id, ingredients)
+        self.broadcast_changes_to_ui()
 
     def create_meal(self, new_meal: DetailedMeal) -> None:
         """This method creates a new meal"""
@@ -112,6 +121,7 @@ class MealCatalog:
         new_id = db.DetailedMealQuery.run_insert(new_meal.name, bt.renull(new_meal.tag), bt.renull(new_meal.picture), 
                                                  bt.renull(new_meal.description), bt.renull(new_meal.recipe))
         db.MealIngredientsQuery.run_update(new_id, ingredients)
+        self.broadcast_changes_to_ui()
 
     def _get_ing_dict(self, detailed_meal: DetailedMeal) -> dict:
         measure_ids = dt.load_measure_ids()
@@ -124,4 +134,5 @@ class MealCatalog:
     def delete_meal(self, meal_id: int) -> None:
         """Deletes a meal from the database, no restrictions (yet)"""
         db.DetailedMealQuery.run_delete(meal_id)
+        self.broadcast_changes_to_ui()
 

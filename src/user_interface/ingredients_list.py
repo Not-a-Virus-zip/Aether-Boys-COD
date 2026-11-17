@@ -14,14 +14,15 @@ from ..backend import (
     virtual_pantry as vp_backend,
 )
 from ..backend.ingredient_list import ExistingIngredient
+from ..update_flags import DataUpdate
 
 class IngredientsList:
     """Constructs and controls the ingredients UI"""
+    name: str = "Ingredients"
+    receive_updates_for = DataUpdate.Ingredients
+
     backend: il_backend.IngredientList
 
-    virtual_pantry: vp.VirtualPantry
-
-    name: str = "Ingredients"
     frame: ttk.Frame
     ingr_display: ScrollableTreeview
     auto_sorter: AutoSorter
@@ -30,10 +31,9 @@ class IngredientsList:
     add_button: ttk.Button
     edit_button: ttk.Button
 
-    def __init__(self, parent: ttk.Notebook, virtual_pantry: vp.VirtualPantry, ing_backend: il_backend.IngredientList):
+    def __init__(self, parent: ttk.Notebook, ing_backend: il_backend.IngredientList):
         self.backend = ing_backend
 
-        self.virtual_pantry = virtual_pantry
 
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
         self.ingr_display = ScrollableTreeview(ingredients_frame, columns=["name", "tag", "unit"], show="headings", selectmode=tk.BROWSE)
@@ -48,7 +48,7 @@ class IngredientsList:
         tv.column("unit", anchor="e", width=0)
 
         self.ingr_list = []
-        self.refresh_ingredients(also_refresh_pantry=False)
+        self.handle_update(DataUpdate.Ingredients)
 
         self.ingr_display.grid(row=0, column=0, columnspan=2, sticky="news")
         ingredients_frame.rowconfigure(0, weight=1)
@@ -85,11 +85,8 @@ class IngredientsList:
         for i, ingr in enumerate(self.ingr_list):
             self.ingr_display.treeview.insert("", "end", id=i, text="", values=[ingr.name, ingr.tag, ingr.measurement_type.name], tags=["il"])
 
-    def refresh_ingredients(self, also_refresh_pantry=True):
-        "Propagate changes from the database into the ui."
+    def handle_update(self, update: DataUpdate):
         self.auto_sorter.refresh()
-        if also_refresh_pantry:
-            self.virtual_pantry.refresh_pantry()
 
     def _on_selection_change(self, tv: tk.Event) -> object:
         new_state = tk.NORMAL if self.is_one_ingr_selected() else tk.DISABLED
@@ -128,7 +125,6 @@ class IngredientsList:
                     f"Could not delete \"{ingr.name}\" from the ingredient database because it is currently used in a meal.",
                     parent=self.frame,
                 )
-            self.refresh_ingredients()
     
     def press_add_button(self):
         em.show_edit_menu(
@@ -211,5 +207,4 @@ class IngredientEditMenu(em.EditMenuWithSearcher):
             self.ingr_list.backend.create_ingredient(new_name, new_tag, new_msmnt.id)
         else:
             self.ingr_list.backend.update_ingredient(self.ingredient.modify(name=new_name, tag=new_tag, measurement_type=new_msmnt))
-        self.ingr_list.refresh_ingredients()
         self.container.destroy()

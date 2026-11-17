@@ -16,11 +16,13 @@ from ..backend import (
     units
 )
 from ..backend.ingredient_list import ExistingIngredient
+from ..update_flags import DataUpdate
 
 
 class VirtualPantry:
     """Constructs and controls the virtual pantry UI"""
     name: str = "Virtual Pantry"
+    receive_updates_for = DataUpdate.VirtualPantry | DataUpdate.Ingredients
     
     pantry_backend: vp_backend.VirtualPantry
     ing_backend: il_backend.IngredientList
@@ -46,7 +48,7 @@ class VirtualPantry:
         tv.column("qty", anchor="e")
 
         self.pantry_contents = []
-        self.refresh_pantry()
+        self.handle_update(DataUpdate.Ingredients | DataUpdate.VirtualPantry)
         self.pantry_display.grid(row=0, column=0, sticky="news")
         self.frame.grid(row=0, column=0, sticky="news")
 
@@ -71,7 +73,7 @@ class VirtualPantry:
         tv.bind("<<TreeviewSelect>>", self._on_selection_change)
         self.pantry_display.add_double_click_command("vp", self._on_double_click)
 
-    def refresh_pantry(self):
+    def handle_update(self, update: DataUpdate):
         self.auto_sorter.refresh()
 
     def _on_double_click(self, tgt_str: str):
@@ -119,7 +121,6 @@ class VirtualPantry:
         ):
             for ingr, _ in deletion_targets:
                 self.pantry_backend.delete_vpantry_entry(ingr.id)
-                self.refresh_pantry()
 
     def press_add_button(self):
         em.show_edit_menu(
@@ -170,7 +171,6 @@ class VPantryEditMenu(em.EditMenu):
         
         # assert self.prev_quantity.is_compatible_with(new_quantity)
         self.pantry.pantry_backend.update_vpantry_entry(self.ingredient, new_quantity)
-        self.pantry.refresh_pantry()
         self.container.destroy()
 
 class VPantryAddMenu(em.EditMenuWithSearcher):
@@ -213,5 +213,4 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
         ingredient = self.ingredient_name.elem.get_selection()
         assert ingredient is not None
         self.pantry.pantry_backend.add_vpantry_entry(ingredient, new_quantity)
-        self.pantry.refresh_pantry()
         self.container.destroy()

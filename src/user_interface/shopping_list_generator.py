@@ -16,6 +16,7 @@ from ..backend import (
     units,
     shopping_list_generator as sl_backend,
 )
+from ..update_flags import DataUpdate
 from .treeview_tools import AutoSorter, ScrollableTreeview, add_double_click_command
 from . import (
     user_interface_impl as ui,
@@ -26,14 +27,13 @@ type UIMode = CreateNewListUI | ShowCurrentListUI
 
 class ShoppingListGeneratorUI:
     name: str = "Your Shopping List"
+    receive_updates_for: DataUpdate = DataUpdate.VirtualPantry | DataUpdate.Ingredients | DataUpdate.Calendar
 
-    def __init__(self, parent: ttk.Notebook, pantry: vp.VirtualPantry, backend: ui.Backend) -> None:
+    def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
         self.frame = ttk.Frame(parent, name="shopping", padding=20)
         self.frame.columnconfigure(0, weight=1)
         self.frame.rowconfigure(0, weight=1)
         self.backend = backend
-
-        self.pantry = pantry
 
         self.generator = CreateNewListUI(self.frame, self)
         self.trip_display = ShowCurrentListUI(self.frame, self)
@@ -59,10 +59,23 @@ class ShoppingListGeneratorUI:
 
     def finish_shopping_trip(self, trip: ShoppingTripResults):
         self.backend.generator.complete_shopping_trip(trip)
-        self.pantry.refresh_pantry()
         self._swap_in_ui(self.generator)
 
+    def handle_update(self, update: DataUpdate):
+        if self.current is not None:
+            if update in self.current.receive_updates_for:
+                self.current.handle_update(update)
+        match self.current:
+            case None:
+                pass
+            case CreateNewListUI():
+                pass
+            case ShowCurrentListUI():
+                pass
+
 class CreateNewListUI:
+    receive_updates_for: DataUpdate = DataUpdate.VirtualPantry | DataUpdate.Ingredients | DataUpdate.Calendar
+
     def __init__(self, frame: ttk.Frame, main_ui: ShoppingListGeneratorUI):
         self.frame = ttk.Frame(frame)
         self.main_ui = main_ui
@@ -109,6 +122,9 @@ class CreateNewListUI:
         # default duration is 1 week
         duration_entry.current(7)
 
+    def handle_update(self, update: DataUpdate):
+        self.update_shopping_preview(self.current_date_span)
+
     def press_go_shopping(self):
         if self.shopping_list is not None:
             self.main_ui.start_shopping_trip(self.shopping_list)
@@ -123,6 +139,7 @@ class CreateNewListUI:
                 self.update_shopping_preview(span)
     
     def update_shopping_preview(self, span: tuple[dt.date, dt.date]):
+        self.current_date_span = span
         self.shopping_list = self.main_ui.backend.generator.get_needed_ingredients(*span)
         self.ingr_list = list(self.shopping_list.ingredients_needed)
         self.editing_index = None
@@ -152,6 +169,8 @@ class CreateNewListUI:
         self.display_len = len(self.ingr_list)
 
 class ShowCurrentListUI:
+    receive_updates_for: DataUpdate = DataUpdate.Ingredients
+
     def __init__(self, frame: ttk.Frame, main_ui: ShoppingListGeneratorUI):
         self.frame = ttk.Frame(frame)
         self.main_ui = main_ui
@@ -228,6 +247,9 @@ class ShowCurrentListUI:
             button_weight=1,
         )
         b_frame.grid(row=5, column=0, columnspan=2, sticky="ew")
+
+    def handle_update(self, update: DataUpdate):
+        pass  # TODO: handle changes to ingredient names?
     
     def on_press_cancel(self):
         if self.current_trip is None:

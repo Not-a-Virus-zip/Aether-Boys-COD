@@ -24,6 +24,7 @@ from ..backend import (
     event as ev_backend,
     shopping_list_generator as sl_backend,
 )
+from ..update_flags import DataUpdate
 
 
 def fmt_qty(qty: pint.Quantity | pint.Unit) -> str:
@@ -56,15 +57,18 @@ class Application:
         self.root = tk.Tk()
         self.root.wm_title("Meal Planner")
         self.root.geometry("750x600")
-        pantry = vp_backend.VirtualPantry()
+        pantry = vp_backend.VirtualPantry(self)
         self.backend = Backend(
-            il_backend.IngredientList(),
+            il_backend.IngredientList(self),
             pantry,
-            mc_backend.MealCatalog(),
-            ev_backend.EventManager(),
-            sl_backend.ShoppingListGenerator(pantry),
+            mc_backend.MealCatalog(self),
+            ev_backend.EventManager(self),
+            sl_backend.ShoppingListGenerator(self, pantry),
         )
         self.interface = UserInterface(self.root, self.backend)
+
+    def handle_update(self, update: DataUpdate):
+        self.interface.handle_update(update)
 
     def run(self):
         self.root.mainloop()
@@ -82,13 +86,6 @@ class UserInterface:
         root.rowconfigure(0, weight=1)
         top_bar_menu = ttk.Notebook(root, name="top_bar_menu")
 
-        self.pantry = vp.VirtualPantry(top_bar_menu, backend)
-        self.meals = mc.MealCatalog(top_bar_menu, backend)
-        self.calendar = cal.Calendar(top_bar_menu, backend)
-        self.shopping_list = sl.ShoppingListGeneratorUI(top_bar_menu, self.pantry, backend)
-        self.ingredients = il.IngredientsList(top_bar_menu, self.pantry, backend.ingredients)
-        self.settings = DummyInterface("Settings", ttk.Frame(top_bar_menu, name="settings"))
-
         self.contents = (
             self.pantry,
             self.meals,
@@ -96,6 +93,13 @@ class UserInterface:
             self.shopping_list,
             self.ingredients,
             self.settings,
+        ) = (
+            vp.VirtualPantry(top_bar_menu, backend),
+            mc.MealCatalog(top_bar_menu, backend),
+            cal.Calendar(top_bar_menu, backend),
+            sl.ShoppingListGeneratorUI(top_bar_menu, backend),
+            il.IngredientsList(top_bar_menu, backend.ingredients),
+            DummyInterface("Settings", ttk.Frame(top_bar_menu, name="settings")),
         )
 
         # register each ui section with the notebook
@@ -108,6 +112,11 @@ class UserInterface:
 
         top_bar_menu.select(self.ingredients.frame)
         top_bar_menu.grid(row=0, column=0, sticky="nsew")
+
+    def handle_update(self, update: DataUpdate):
+        for interface in self.contents:
+            if update in interface.receive_updates_for:
+                interface.handle_update(update)
 
 def make_buttons(put_in: tk.Misc, button_instructions: Iterable[tuple[str, Callable[[], None]] | str | int], button_weight: int | None = None) -> tuple[ttk.Frame, list[ttk.Button]]:
     """Helper function used to create buttons at the bottom of a page"""
@@ -140,4 +149,8 @@ class DummyInterface:
     """Placeholder for unimplemented parts of the UI"""
     name: str
     frame: ttk.Frame
+
+    receive_updates_for = DataUpdate.Nothing
+    def handle_update(self, update: DataUpdate):
+        pass
 

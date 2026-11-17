@@ -20,12 +20,13 @@ from ..backend import (
 
 from ..backend.meal_catalog import ExistingSimpleMeal, ExistingDetailedMeal, DetailedMeal
 from ..backend.ingredient_list import ExistingIngredient
-
+from ..update_flags import DataUpdate
 from .treeview_tools import ScrollableTreeview, add_double_click_command, link_treeview_to_scrollbar, AutoSorter
 
 class MealCatalog:
     """Constructs and controls the meal catalog UI"""
     name: str = "Meal Catalog"
+    receive_updates_for = DataUpdate.MealCatalog
 
     backend: ui.Backend
     frame: ttk.Frame
@@ -70,7 +71,7 @@ class MealCatalog:
         self.edit_button.config(state=tk.DISABLED)
 
         self.catalog_contents = []
-        self.refresh_catalog()
+        self.handle_update(DataUpdate.MealCatalog)
 
         tv.bind("<<TreeviewSelect>>", self._on_selection_change)
         self.meal_display.add_double_click_command("mc", self._on_double_click)
@@ -84,10 +85,10 @@ class MealCatalog:
         self.catalog_contents = self.backend.meals.get_simple_meals(column, asc)
         for i, meal in enumerate(self.catalog_contents):
             self.meal_display.treeview.insert("", "end", id=i, text="", values=[meal.name, meal.tag, meal.description], tags=["mc"])
-    
-    def refresh_catalog(self):
+
+    def handle_update(self, update: DataUpdate):
         self.auto_sorter.refresh()
-        
+    
     def _on_selection_change(self, tv: tk.Event) -> object:
         new_state = tk.NORMAL if self.is_meal_selected() else tk.DISABLED
         self.edit_button.config(state=new_state)
@@ -115,7 +116,6 @@ class MealCatalog:
             parent=self.frame,
         ):
             self.backend.meals.delete_meal(meal.id)
-            self.refresh_catalog()
 
     def press_add_button(self):
         em.show_edit_menu(
@@ -210,7 +210,6 @@ class MealEditMenu(em.EditMenu):
                 self.catalog.backend.meals.update_meal(meal)
             case DetailedMeal() as meal:
                 self.catalog.backend.meals.create_meal(meal)
-        self.catalog.refresh_catalog()
         self.container.destroy()
 
 class IngrCurrentPanel:
