@@ -10,7 +10,7 @@ def link_treeview_to_scrollbar(tv: ttk.Treeview, sb: ttk.Scrollbar):
     sb.config(command=tv.yview)
 
 def add_double_click_command(treeview: ttk.Treeview, tag: str, command: Callable[[str], None]) -> str:
-    return treeview.tag_bind(tag, "<Double-Button-1>", lambda e: command(treeview.identify_row(e.y)))
+    return treeview.tag_bind(tag, "<Double-ButtonRelease-1>", lambda e: command(treeview.identify_row(e.y)))
 
 class ScrollableTreeview:
     """Bundles a `ttk.Treeview` and a `ttk.Scrollbar` together along with a frame containing them both."""

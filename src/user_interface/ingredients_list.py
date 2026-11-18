@@ -33,8 +33,6 @@ class IngredientsList:
 
     def __init__(self, parent: ttk.Notebook, ing_backend: il_backend.IngredientList):
         self.backend = ing_backend
-
-
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
         self.ingr_display = ScrollableTreeview(ingredients_frame, columns=["name", "tag", "unit"], show="headings", selectmode=tk.BROWSE)
         self.auto_sorter = AutoSorter(self.ingr_display.treeview, self._autosorter_command)
@@ -130,7 +128,7 @@ class IngredientsList:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Create New Ingredient",
-            lambda tl: IngredientEditMenu(self, tl, None).frame
+            lambda tl: IngredientEditMenu(self, tl, None)
         )
 
     def press_edit_button(self):
@@ -142,7 +140,7 @@ class IngredientsList:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
-            lambda tl: IngredientEditMenu(self, tl, ingr).frame
+            lambda tl: IngredientEditMenu(self, tl, ingr)
         )
 
 class IngredientEditMenu(em.EditMenuWithSearcher):

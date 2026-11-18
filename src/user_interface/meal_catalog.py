@@ -121,7 +121,7 @@ class MealCatalog:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Add Meal",
-            lambda tl: MealEditMenu(self, tl).frame
+            lambda tl: MealEditMenu(self, tl)
         )
 
     def press_edit_button(self):
@@ -134,7 +134,7 @@ class MealCatalog:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Edit Meal",
-            lambda tl: MealEditMenu(self, tl, full_meal).frame
+            lambda tl: MealEditMenu(self, tl, full_meal)
         )
 
 empty_detailed_meal = DetailedMeal(

@@ -18,7 +18,6 @@ from ..backend import (
 from ..backend.ingredient_list import ExistingIngredient
 from ..update_flags import DataUpdate
 
-
 class VirtualPantry:
     """Constructs and controls the virtual pantry UI"""
     name: str = "Virtual Pantry"
@@ -32,6 +31,7 @@ class VirtualPantry:
     pantry_contents: list[tuple[ExistingIngredient, pint.Quantity]]
     add_button: ttk.Button
     edit_button: ttk.Button
+    open_editors: em.OpenEditors[VPantryEditMenu]
 
     def __init__(self, parent: ttk.Notebook, backend: ui.Backend):
         self.pantry_backend = backend.pantry
@@ -41,6 +41,7 @@ class VirtualPantry:
         self.frame.rowconfigure(0, weight=1)
         self.pantry_display = ScrollableTreeview(self.frame, columns=["ingr", "qty"], show="headings")
         self.auto_sorter = AutoSorter(self.pantry_display.treeview, self._autosorter_command)
+        self.open_editors = em.OpenEditors()
         tv = self.pantry_display.treeview
         tv.heading("ingr", text="Ingredient")
         tv.column("ingr", anchor="w")
@@ -111,6 +112,36 @@ class VirtualPantry:
         else:
             removal_msg = f"Are you sure you want to remove the following ingredients from your virtual pantry?"
             detail = "\n".join(f"{ingr.name} ({ui.fmt_qty(qty)})" for ingr, qty in deletion_targets)
+        
+        editors: list[VPantryEditMenu] = []
+        for ingr, _ in deletion_targets:
+            editor = self.open_editors.get_editor(ingr.id)
+            if editor is not None:
+                editor.take_focus()
+                editors.append(editor)
+        
+        match editors:
+            case []:
+                pass
+            case [only_one]:
+                only_one.take_focus()
+                messagebox.showerror(
+                    "Error: Currently Open",
+                    f"Could not delete \"{only_one.ingredient.name}\" from the virtual pantry because it is currently being edited.",
+                    detail="To delete it, close its editor window and press the delete button again.",
+                    parent=only_one.frame,
+                )
+                return
+            case more_than_one:
+                messagebox.showerror(
+                    "Error: Currently Open",
+                    f"Could not delete the following ingredients from the virtual pantry because they are currently being edited.\n\n"
+                    f"{"\n".join(editor.ingredient.name for editor in more_than_one)}",
+                    detail="To delete them, close their editor windows and press the delete button again.",
+                    parent=more_than_one[-1].frame,
+                )
+                return
+        
         if messagebox.askokcancel(
             "Confirm Removal",
             removal_msg,
@@ -126,7 +157,7 @@ class VirtualPantry:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Add Ingredient",
-            lambda tl: VPantryAddMenu(self, tl).frame
+            lambda tl: VPantryAddMenu(self, tl)
         )
 
     def press_edit_button(self):
@@ -136,10 +167,11 @@ class VirtualPantry:
         self.launch_editor(ingr, qty)
 
     def launch_editor(self, ingr: ExistingIngredient, qty: pint.Quantity):
-        em.show_edit_menu(
+        self.open_editors.show_editor(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
-            lambda tl: VPantryEditMenu(self, tl, ingr, qty).frame
+            ingr.id,
+            lambda tl: VPantryEditMenu(self, tl, ingr, qty),
         )
 
 class VPantryEditMenu(em.EditMenu):

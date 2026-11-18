@@ -14,16 +14,44 @@ import pint
 from . import user_interface_impl as ui
 from ..backend import units
 
-def show_edit_menu(root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], ttk.Frame]):
+class OpenEditors[EditorType: EditMenu]:
+    active: dict[int, EditorType]
+
+    def __init__(self) -> None:
+        self.active = {}
+
+    def show_editor(self, root: tk.Tk | tk.Toplevel, name: str, elem_id: int, make_editor: Callable[[tk.Toplevel], EditorType]) -> bool:
+        """If an editor does not exist, create one using the given function, otherwise direct focus to the existing editor."""
+        success = not self.has_editor(elem_id)
+        if success:
+            self.active[elem_id] = editor = show_edit_menu(root, name, make_editor)
+            editor.frame.bind("<Destroy>", lambda e: self.close_editor(elem_id, editor))
+        else:
+            self.active[elem_id].take_focus()
+        return success
+
+    def get_editor[T](self, elem_id: int, default: T = None) -> EditorType | T:
+        return self.active.get(elem_id, default)
+
+    def has_editor(self, elem_id: int) -> bool:
+        return elem_id in self.active
+
+    def close_editor(self, elem_id: int, editor: EditorType):
+        assert self.active[elem_id] is editor
+        del self.active[elem_id]
+
+def show_edit_menu[EditorType: EditMenu](root: tk.Tk | tk.Toplevel, name: str, edit_frame_maker: Callable[[tk.Toplevel], EditorType]) -> EditorType:
     edit_menu = tk.Toplevel(root)
     edit_menu.wm_title(name)
     edit_menu.grid_propagate(True)
-    edit_frame = edit_frame_maker(edit_menu)
+    editor = edit_frame_maker(edit_menu)
+    edit_frame = editor.frame
     edit_menu.columnconfigure(0, weight=1)
     edit_menu.rowconfigure(0, weight=1)
     edit_frame.grid(row=0, column=0, sticky="nsew")
     edit_menu.resizable(False, False)
     edit_menu.focus()
+    return editor
 
 @dataclass(slots=True)
 class MenuField[T]:
@@ -94,6 +122,9 @@ class EditMenu:
 
     def add_empty_rows(self, how_many: int):
         self.next_row += how_many
+
+    def take_focus(self):
+        self.frame.winfo_toplevel().focus()
 
 class EditMenuWithSearcher(EditMenu):
     """

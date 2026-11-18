@@ -32,6 +32,8 @@ class Calendar:
         self._selected_panel: CalendarPanel | None = None
         self._selected_date: dt.date | None = None
 
+        self.open_editors: em.OpenEditors[EditEvent] = em.OpenEditors()
+
         self.backend = backend
         self.cal = calendar.Calendar(firstweekday=calendar.SUNDAY)
 
@@ -123,6 +125,18 @@ class Calendar:
         event = self._selected_event
         if event is None:
             return
+        
+        editor = self.open_editors.get_editor(event.event.event_id)
+        if editor is not None:
+            editor.take_focus()
+            messagebox.showerror(
+                "Error: Currently Open",
+                f"Could not delete \"{event.event.meal_name}\" because it is currently being edited.",
+                detail="To delete it, close its editor window and press the delete button again.",
+                parent=editor.frame,
+            )
+            return
+
         if messagebox.askokcancel(
             "Confirm Deletion",
             f"Are you sure you want to delete \"{event.event.meal_name}\" from your calendar?",
@@ -136,18 +150,21 @@ class Calendar:
         em.show_edit_menu(
             self.frame.winfo_toplevel(),
             "Add Event",
-            lambda tl: EditEvent(tl, self, self.backend).frame,
+            lambda tl: EditEvent(tl, self, self.backend),
         )
 
     def press_edit_button(self):
         event_disp = self._selected_event
         if event_disp is None or not event_disp.alive:
             return
-        event = event_disp.event
-        em.show_edit_menu(
+        self.open_editor_for(event_disp.event)
+
+    def open_editor_for(self, event: ExistingEvent):
+        self.open_editors.show_editor(
             self.frame.winfo_toplevel(),
             "Edit Event",
-            lambda tl: EditEvent(tl, self, self.backend, event).frame,
+            event.event_id,
+            lambda tl: EditEvent(tl, self, self.backend, event),
         )
 
     def set_selected_event(self, new_selection: EventDisplay | None):
@@ -317,7 +334,7 @@ class EventDisplay:
         self._display_text = self._full_text[:EVENT_NAME_MAX_DISPLAY_LEN_ON_CALENDAR]
         self._font = font.Font(font=ttk.Style().lookup(self.button["style"], "font"))
         self.button.bind("<Configure>", self._on_resize)
-        self.button.bind("<Double-Button-1>", self._on_double_click)
+        self.button.bind("<Double-ButtonRelease-1>", self._on_double_click)
 
     def _on_resize(self, event: tk.Event):
         new_width = event.width
@@ -329,15 +346,12 @@ class EventDisplay:
         self.button.config(text=truncated_text)
 
     def _on_double_click(self, event: tk.Event):
-        prev_state = self._selected
-        self.set_selected(True)
-        self.cal.press_edit_button()
-        self.set_selected(prev_state)
+        self.cal.open_editor_for(self.event)
 
     def set_selected(self, new_state: bool):
         if new_state != self._selected:
-            self._selected = new_state
             self.button.state(("pressed" if new_state else "!pressed",))
+            self._selected = new_state
             self.cal.set_selected_event(self if new_state else None)
     
     def _on_click(self):
