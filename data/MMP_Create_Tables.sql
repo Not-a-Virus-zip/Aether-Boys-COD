@@ -1,5 +1,8 @@
-PRAGMA foreign_keys = ON;  --This needs to be run everytime the python file connects to it.
+PRAGMA foreign_keys = ON;  --This needs to be run everytime the python file connects to the db.
 
+DROP TABLE IF EXISTS TripIngredient;
+DROP TABLE IF EXISTS SavedTrip;
+DROP TABLE IF EXISTS Event;
 DROP TABLE IF EXISTS MealIngredient;
 DROP TABLE IF EXISTS Meal;
 DROP TABLE IF EXISTS VirtualPantry;
@@ -7,7 +10,6 @@ DROP TABLE IF EXISTS Ingredient;
 DROP TABLE IF EXISTS MealTag; -- legacy table, removed so old databases get cleaned up
 DROP TABLE IF EXISTS Tag;   -- legacy table, removed so old databases get cleaned up
 DROP TABLE IF EXISTS MeasureType;
-DROP TABLE IF EXISTS Event;
 
 
 CREATE TABLE MeasureType(
@@ -70,10 +72,15 @@ CREATE TABLE Event (
 
 CREATE INDEX idx_event_date_time ON Event(date, time);  -- Sorted copy of date values for fast searching when using WHERE 
 
+CREATE TABLE SavedTrip (
+    tripID INTEGER PRIMARY KEY,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL
+);
 
-
--- SELECT e.eventID, e.date, e.time, m.name, m.name
--- FROM Event AS e 
--- JOIN Meal AS m 
---     ON e.mealID = m.mealID 
--- BETWEEN ? AND ?
+CREATE TABLE TripIngredient (
+    ingredientID INTEGER NOT NULL,
+    tripID INTEGER NOT NULL,
+    qty INTEGER NOT NULL,
+    measureID INTEGER NOT NULL
+);
