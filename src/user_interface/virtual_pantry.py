@@ -61,7 +61,7 @@ class VirtualPantry:
             self.frame,
             (
                 ("Delete Selected", self.press_delete_button),
-                ("Add New", self.press_edit_button),
+                ("Add New", self.press_add_button),
                 ("Edit Selected", self.press_edit_button),
             ),
             button_weight=1
