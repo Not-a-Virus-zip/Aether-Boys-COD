@@ -34,6 +34,7 @@ class MealCatalog:
     add_button: ttk.Button
     edit_button: ttk.Button
     catalog_contents: list[ExistingSimpleMeal]
+    open_editors: em.OpenEditors[MealEditMenu]
 
     def __init__(self, parent: ttk.Notebook, backend: ui.Backend) -> None:
         self.backend = backend
@@ -43,6 +44,8 @@ class MealCatalog:
 
         self.meal_display = ScrollableTreeview(self.frame, columns=["name", "tag", "desc"], show="headings", selectmode="browse")
         self.auto_sorter = AutoSorter(self.meal_display.treeview, self._autosorter_command, use_columns=["name", "tag"])
+        self.open_editors = em.OpenEditors()
+
         tv = self.meal_display.treeview
         tv.heading("name", text="Name")
         tv.column("name", anchor="w", width=50)
@@ -108,6 +111,18 @@ class MealCatalog:
         meal = self.get_selected()
         if meal is None:
             return
+
+        editor = self.open_editors.get_editor(meal.id)
+        if editor is not None:
+            editor.take_focus()
+            messagebox.showerror(
+                "Error: Currently Open",
+                f"Could not delete \"{meal.name}\" because it is currently being edited.",
+                detail="To delete it, close its editor window and press the delete button again.",
+                parent=editor.frame,
+            )
+            return
+        
         if messagebox.askokcancel(
             "Confirm Deletion",
             f"Are you sure you want to delete \"{meal.name}\" from your meal catalog?",
@@ -131,9 +146,10 @@ class MealCatalog:
 
     def launch_editor(self, meal: ExistingSimpleMeal):
         full_meal = self.backend.meals.get_detailed_meal(meal.id)
-        em.show_edit_menu(
+        self.open_editors.show_editor(
             self.frame.winfo_toplevel(),
             "Edit Meal",
+            meal.id,
             lambda tl: MealEditMenu(self, tl, full_meal)
         )
 

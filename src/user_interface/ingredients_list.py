@@ -27,6 +27,7 @@ class IngredientsList:
     ingr_display: ScrollableTreeview
     auto_sorter: AutoSorter
     ingr_list: list[ExistingIngredient]
+    open_editors: em.OpenEditors[IngredientEditMenu]
 
     add_button: ttk.Button
     edit_button: ttk.Button
@@ -36,7 +37,9 @@ class IngredientsList:
         self.frame = ingredients_frame = ttk.Frame(parent, name="ingredients", padding=20)
         self.ingr_display = ScrollableTreeview(ingredients_frame, columns=["name", "tag", "unit"], show="headings", selectmode=tk.BROWSE)
         self.auto_sorter = AutoSorter(self.ingr_display.treeview, self._autosorter_command)
+        self.open_editors = em.OpenEditors()
         tv = self.ingr_display.treeview
+
          # width=0 lets the treeview widget auto-determine the appropriate width
         tv.heading("name", text="Name")
         tv.column("name", anchor="w", width=0)
@@ -106,6 +109,16 @@ class IngredientsList:
         if ingr is None:
             return
 
+        editor = self.open_editors.get_editor(ingr.id)
+        if editor is not None:
+            editor.take_focus()
+            messagebox.showerror(
+                "Error: Currently Open",
+                f"Could not delete \"{ingr.name}\" because it is currently being edited.",
+                detail="To delete it, close its editor window and press the delete button again.",
+                parent=editor.frame,
+            )
+            return
         # TODO: Warn if ingredient exists in virtual pantry
         
         if messagebox.askokcancel(
@@ -137,9 +150,10 @@ class IngredientsList:
         self.launch_editor(selection)
         
     def launch_editor(self, ingr: ExistingIngredient):
-        em.show_edit_menu(
+        self.open_editors.show_editor(
             self.frame.winfo_toplevel(),
             "Edit Ingredient",
+            ingr.id,
             lambda tl: IngredientEditMenu(self, tl, ingr)
         )
 
