@@ -13,16 +13,13 @@ def interpret_quantity(quantity_expression: str, unit_constraint: pint.Unit | No
         if unit_constraint is None:
             return quantity
         base_unit = quantity.units
-        compatible = quantity.is_compatible_with(unit_constraint)
-        if not compatible and quantity.unitless:
+        if (unit_constraint != quantity.units and quantity.unitless):
             # try to multiply by the unit constraint
             try:
                 quantity *= unit_constraint
             except pint.PintError:
                 pass
-            # did we make it compatible?
-            compatible = quantity.is_compatible_with(unit_constraint)
-        if not compatible:
+        if not quantity.is_compatible_with(unit_constraint):
             raise ValueError(f"Incompatible units: {base_unit} and {unit_constraint}")
         return quantity
     else:
