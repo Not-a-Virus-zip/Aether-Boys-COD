@@ -111,6 +111,23 @@ class VirtualPantryQuery(SelectDB):
         except sql.IntegrityError as e:
             print(f'{e}: There was an invalid ID given for measure {measure_id!r}. Please check!')
 
+    @staticmethod
+    def run_bulk_insert_update(changed_ing: tuple[tuple[int, float, int]]):
+        try:
+            with get_connection() as con:
+                cur = con.cursor()
+                cur.executemany(
+                    """
+                    INSERT INTO VirtualPantry(ingredientID, qtyHave, measureID) VALUES (?,?,?)
+                    ON CONFLICT(ingredientID) DO UPDATE SET
+                        qtyHave = excluded.qtyHave,
+                        measureID = excluded.measureID
+                    ;
+                    """,
+                changed_ing)
+        except sql.IntegrityError as e:
+            print(f'There was an error updating the VirtualPantry for the shopping trip.')
+
     # Grabs only info needed for backend. No user facing values
     @staticmethod
     def run_select_backend() -> list[tuple]:

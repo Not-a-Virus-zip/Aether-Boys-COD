@@ -68,26 +68,22 @@ class VirtualPantry:
         db.VirtualPantryQuery.run_delete(ingredient_id)
         self.broadcast_changes_to_ui()
 
-    def add_purchased_ingredients(self, ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]):
+    def add_purchased_ingredients(self, bought_ingredients: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]):
         measure_ids = dt.load_measure_ids()
         
         # Get current Virtual Pantry
-        curr = {ing_id: units.unit_reg.Quantity(qty, unit) for ing_id, qty, unit in db.VirtualPantryQuery.run_select_backend()}
+        curr_vp = {ing_id: units.unit_reg.Quantity(qty, unit) for ing_id, qty, unit in db.VirtualPantryQuery.run_select_backend()}
+
+        # List of ingredients to be added
+        to_update = []
 
         # Make a list of ingredients that need to have quantity updated / Ingredients that need to be added
+        for ing,qty in bought_ingredients:
+            if ing.id in curr_vp:
+                qty = curr_vp[ing.id] + qty
+            to_update.append((ing.id, qty.m, bt.pint_to_measure_ids(measure_ids, qty)))
 
-        # Run update
-        # Run insert
-        
-        self.placeholder_add_purchased_ingredients(curr, ingredients)
+        db.VirtualPantryQuery.run_bulk_insert_update(tuple(to_update))
 
         self.broadcast_changes_to_ui()
 
-
-    def placeholder_add_purchased_ingredients(self, curr, added: tuple[tuple[il.ExistingIngredient, pint.Quantity], ...]): 
-        
-        for ingr, qty in added:
-            if ingr.id in curr:
-                self.update_vpantry_entry(ingr, curr[ingr.id] + qty)
-            else:
-                self.add_vpantry_entry(ingr, qty)
