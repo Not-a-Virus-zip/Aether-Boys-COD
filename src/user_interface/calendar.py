@@ -47,12 +47,12 @@ class Calendar:
 
         left_b = ttk.Button(time_selector_frame, text="<", width=2, command=lambda: self.shift_month(-1))
         right_b = ttk.Button(time_selector_frame, text=">", width=2, command=lambda: self.shift_month(1))
-        
         self.month_box = ttk.Combobox(time_selector_frame, justify=tk.CENTER, state="readonly", values=list(MONTHS_MAP))
         self.month_box.bind("<<ComboboxSelected>>", self._on_month_selected)
 
         self.year_box = ttk.Combobox(time_selector_frame, width=10, justify=tk.CENTER, postcommand=self._get_year_options)
         self.year_box.bind("<<ComboboxSelected>>", self._on_year_selected)
+        self.year_box.bind("<Return>", self._on_year_selected)
 
         for n in 1, 5:
             time_selector_frame.columnconfigure(n, weight=1, uniform="time_selector_centering")
@@ -193,12 +193,26 @@ class Calendar:
         return self.visible_date if self._selected_date is None else self._selected_date
 
     def _on_year_selected(self, event: tk.Event):
-        selection = self.month_box.get()
+        selection = self.year_box.get()
         try:
             selection = int(selection)
         except ValueError:
+            messagebox.showerror(
+                "Error: Bad Input",
+                f"Invalid Year: '{selection}'",
+                parent=self.frame,
+            )
             return
-        self.switch_calendar_to(self.visible_date.replace(year=selection))
+        try:
+            new_date = self.visible_date.replace(year=selection)
+        except ValueError:
+            messagebox.showerror(
+                "Error: Bad Input",
+                f"The year {selection} is too big or too small.",
+                parent=self.frame,
+            )
+            return
+        self.switch_calendar_to(new_date)
 
     def _on_month_selected(self, event: tk.Event):
         selection = self.month_box.current()
@@ -207,7 +221,14 @@ class Calendar:
         self.switch_calendar_to(self.visible_date.replace(month=selection+1))
 
     def shift_month(self, shift: int):
-        self.switch_calendar_to(add_months(self.visible_date, shift))
+        try:
+            self.switch_calendar_to(add_months(self.visible_date, shift))
+        except OverflowError:
+            messagebox.showerror(
+                "Error: Bad Input",
+                f"The chosen year {self.visible_date.year+shift} is too big or too small.",
+                parent=self.frame,
+            )
 
     def _get_year_options(self):
         year = self.visible_date.year
