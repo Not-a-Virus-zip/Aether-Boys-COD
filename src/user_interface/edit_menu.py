@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from textwrap import wrap
 from tkinter import ttk
-from tkinter import scrolledtext as scrtxt
+from tkinter import (
+    scrolledtext as scrtxt,
+    messagebox,
+)
 import tkinter as tk
 import datetime as dt
 from typing import Any, Callable, Iterable, Protocol, override
@@ -67,7 +70,7 @@ class EditMenu:
     """
     frame: ttk.Frame
     next_row: int
-    menu_widgets: list[Validatable]
+    menu_widgets: list[tuple[str, Validatable]]
     submenus: list[EditMenu]
 
     def __init__(self, parent: tk.Misc) -> None:
@@ -83,7 +86,7 @@ class EditMenu:
         field_label.grid(row=tgt_row, column=0, sticky="ne")
         elem.insert(row=tgt_row, column=2)
         menu_field = MenuField(field_label, elem)
-        self.menu_widgets.append(menu_field.elem)
+        self.menu_widgets.append((name, menu_field.elem))
         return menu_field
 
     def finish_construction(self, bottom_buttons: Iterable[tuple[str, Callable[[], None]] | str | int]) -> list[ttk.Button]:
@@ -110,12 +113,39 @@ class EditMenu:
 
     def check_all_input_and_show_errors(self) -> bool:
         """Return True if no errors, False otherwise."""
-        success = True
-        for w in self.menu_widgets:
-            success = success and w.check_and_show_errors()
-        for submenu in self.submenus:
-            success = success and submenu.check_all_input_and_show_errors()
-        return success
+        errors = self.show_and_retrieve_errors()
+        match errors:
+            case []:
+                pass
+            case [only_one]:
+                messagebox.showerror(
+                    "Error: Bad Input",
+                    f"There's something wrong with the field: {only_one}",
+                    parent=self.frame,
+                )
+            case more_than_one:
+                messagebox.showerror(
+                    "Error: Bad Input",
+                    f"There's something wrong with the following fields.",
+                    detail="\n".join(more_than_one),
+                    parent=self.frame,
+                )
+        return not errors
+
+
+    def show_and_retrieve_errors(self) -> list[str]:
+        """Returns a list of all field names with invalid inputs."""
+        errors = [
+            name
+            for name, w in self.menu_widgets
+            if not w.check_and_show_errors()
+        ]
+        errors.extend(
+            failure
+            for submenu in self.submenus
+            for failure in submenu.show_and_retrieve_errors()
+        )
+        return errors
     
     def get_row_count(self) -> int:
         return self.next_row
@@ -165,7 +195,7 @@ class EditMenuWithSearcher(EditMenu):
         field_label.grid(row=tgt_row, column=0, sticky="ne")
         elem.insert(row=tgt_row, column=2, search_menu=self)
         menu_field = MenuField(field_label, elem)
-        self.menu_widgets.append(menu_field.elem)
+        self.menu_widgets.append((name, menu_field.elem))
         return menu_field
 
     def post_search(self, menu: Searcher, display_header: str, values: list[str]):

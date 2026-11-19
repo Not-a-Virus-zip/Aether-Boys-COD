@@ -197,7 +197,6 @@ class VPantryEditMenu(em.EditMenu):
 
     def save_and_close(self):
         if not self.check_all_input_and_show_errors():
-            # TODO: Pop-up error?
             return
         new_quantity = self.amount.elem.get_quantity()
         
@@ -239,7 +238,6 @@ class VPantryAddMenu(em.EditMenuWithSearcher):
 
     def save_and_close(self):
         if not self.check_all_input_and_show_errors():
-            # TODO: Pop-up error?
             return
         new_quantity = self.amount.elem.get_quantity()
         ingredient = self.ingredient_name.elem.get_selection()
